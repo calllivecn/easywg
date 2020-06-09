@@ -44,6 +44,11 @@ def ip_list_wg():
 
     return if_wgs
 
+
+def add_default_table(ifname, table_id):
+    with IP() as ip:
+        ip.route("add", )
+
 def test():
     from pprint import pprint
     pprint(ip_list_wg())

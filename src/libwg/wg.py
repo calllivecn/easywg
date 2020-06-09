@@ -1,3 +1,4 @@
+
 from subprocess import run, PIPE
 
 from pyroute2 import NDB, WireGuard
@@ -17,7 +18,7 @@ def genpsk():
 def add_wg(ifname, ip):
 
     with NDB() as db:
-        wg = db.create(ifname=ifname, kind="wireguard")
+        wg = db.add(ifname=ifname, kind="wireguard")
         wg.add_ip(ip)
         wg.up()
         wg.commit()
@@ -36,6 +37,14 @@ def list_wg():
 
     return if_wgs
 
+def get_index4ifname(iface):
+    for index, ifname, _ in list_wg():
+        if iface == ifname:
+            return index
+
+def wg_fwmark(ifname, fwmark):
+    with WireGuard() as wg:
+        wg.set(ifname, fwmark=fwmark)
 
 def wg_set(ifname, private_key, listen_port, fwmark=0):
     with WireGuard() as wg:
@@ -60,11 +69,22 @@ def wg_peer(ifname, pubkey, **kwargs):
         wg.set(ifname, peer=peer)
 
 ###############
-# route mange
+# route vpn 模式使用
 ###############
-def 
+def global_route_wg(ifname, fwmark, table_id):
+    wg_fwmark(ifname, fwmark)
 
+    oif = get_index4ifname(ifname)
+
+    with NDB() as db:
+        db.routes.add(dst="0.0.0.0/0", oif=oif, table=table_id)
+        input("wait... ")
+        db.routes.remove(dst="0.0.0.0/0", oif=oif, table=table_id)
+        #db.rules.create()
 
 if __name__ == "__main__":
-    add_wg("wg500", "1.1.1.0/24")
+    add_wg("wg500", "1.1.1.1/24")
+
+    global_route_wg("wg500")
+
     del_wg("wg500")
