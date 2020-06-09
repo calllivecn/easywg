@@ -1,14 +1,14 @@
 
 from subprocess import run, PIPE
 
-from pyroute2 import NDB, WireGuard
+from pyroute2 import IPDB, NDB, IPRoute, WireGuard
 
 def genkey():
     p = run("wg genkey".split(), stdout=PIPE, text=True)
     return p.stdout
 
 def pubkey(private_key):
-    p = run("wg pubkey", input=private_key.encode(), stdout=PIPE, text=True)
+    p = run("wg pubkey".split(), input=private_key, stdout=PIPE, text=True)
     return p.stdout
 
 def genpsk():
@@ -17,8 +17,8 @@ def genpsk():
 
 def add_wg(ifname, ip):
 
-    with NDB() as db:
-        wg = db.add(ifname=ifname, kind="wireguard")
+    with IPDB() as db:
+        wg = db.create(ifname=ifname, kind="wireguard")
         wg.add_ip(ip)
         wg.up()
         wg.commit()
@@ -46,7 +46,7 @@ def wg_fwmark(ifname, fwmark):
     with WireGuard() as wg:
         wg.set(ifname, fwmark=fwmark)
 
-def wg_set(ifname, private_key, listen_port, fwmark=0):
+def wg_set(ifname, private_key, listen_port=None, fwmark=0):
     with WireGuard() as wg:
         wg.set(ifname, private_key=private_key, listen_port=listen_port, fwmark=fwmark)
 
@@ -76,15 +76,24 @@ def global_route_wg(ifname, fwmark, table_id):
 
     oif = get_index4ifname(ifname)
 
-    with NDB() as db:
-        db.routes.add(dst="0.0.0.0/0", oif=oif, table=table_id)
-        input("wait... ")
-        db.routes.remove(dst="0.0.0.0/0", oif=oif, table=table_id)
+    with IPRoute() as ip:
+        ip.route("add", dst="0.0.0.0/0", oif=oif, table=table_id)
+        ip.rule("add", table=table_id, fwmark=fwmark, action="RT_SCOPE_NOWHERE")
+        # 到这里不行了。 pyroute２ 还是有很多问题。
+        ip.rule("add", action="FRA_SUPPRESS_PREFIXLENGTH")
+        input("回车 continue... ")
+
+        ip.route("delete", dst="0.0.0.0/0", oif=oif, table=table_id)
         #db.rules.create()
 
 if __name__ == "__main__":
     add_wg("wg500", "1.1.1.1/24")
 
-    global_route_wg("wg500")
+    private_key = genkey()
+    public_key = pubkey(private_key)
+
+    wg_set("wg500", private_key)
+
+    global_route_wg("wg500", 0x123, 123)
 
     del_wg("wg500")
