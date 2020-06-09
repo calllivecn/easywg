@@ -3,5 +3,8 @@
     <head>
         <script src="{% static "js/jquery.min.js" %}"></script>
         <script src="{% static "layui/layui.js" %}"></script>
+
+        <title>{% block TITLE %}Easy wireguard{% endblock %}</title>
     </head>
+    <body>{% block BODY %}<h1>好像渲染出错了！</h1>{% endblock %}</body>
 </html>
