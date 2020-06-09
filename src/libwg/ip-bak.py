@@ -7,18 +7,18 @@ class IP:
     def __init__(self):
         self.ip = IPRoute()
 
-    def __entry__(self):
+    def __enter__(self):
         return self.ip
     
     def __exit__(self, exec_type, exec_value, exec_tb):
-        self.close()
+        self.ip.close()
 
 
 def ip_link_lookup(ifname):
     with IP() as ip:
         return ip.link_lookup(ifname=ifname)[0]
 
-def ip_link_add(dev, type_):
+def ip_link_add_wg(dev):
     with IP() as ip:
         ip.link("add", ifname=dev, kind="wiregurad")
 
