@@ -1,4 +1,5 @@
-
+import socket
+import ipaddress
 from subprocess import run, PIPE
 
 from pyroute2 import IPDB, NDB, WireGuard
@@ -57,16 +58,37 @@ def wg_peer(ifname, pubkey, peer):
     {
         'remove': false,
         'preshared_key': 'Pz8/V2FudFRvVHJ5TXlBZXJvR3Jvc3NlQmljaGU/Pz8=',
-        'endpoint_addr': '8.8.8.8',
+        'endpoint_addr': '8.8.8.8', # 这里只能是IP, 不能是域名.
         'endpoint_port': 9999,
         'persistent_keepalive': 25,
         'allowed_ips': ['::/0'],
     }
     """
+    # 如果endpoint_addr 是 域名，解析成ip
+    # ipv6 也许会有问题
+    addr = peer.get("endpoint_addr")
+    if addr is not None:
+        try:
+            ipaddress.ip_address(addr)
+            ip = addr
+        except ValueError:
+            ip = socket.gethostbyname(addr)
+        
+        peer["endpoint_addr"] = ip
+    
+
+    # check allowed-ips 都是网络地址
+    allowed_ips = peer.get("allowed_ips")
+    if allowed_ips is not None:
+        for network in allowed_ips:
+            try:
+                ipaddress.ip_network(network)
+            except ValueError:
+                raise ValueError(f"allowed-ips: {network} 不是网络地址， 或网络地址不正确。")
+        
     peer['public_key'] = pubkey
     with WireGuard() as wg:
         wg.set(ifname, peer=peer)
-
 
 
 ############
@@ -78,23 +100,21 @@ def wg_peer(ifname, pubkey, peer):
 def ip(cmd):
     cp = run(cmd.split(), check=True)
 
-
 def set_global_route_wg(ifname, table_id, fwmark):
 
    # ip route add default dev wg0 table 200
-   ip(f"ip route add def dev {ifname} table {table_id}")
-   ip(f"ip rule add not fwmark {fwmark} table {table}")
+   ip(f"ip route add default dev {ifname} table {table_id}")
+   ip(f"ip rule add not fwmark {fwmark} table {table_id}")
    ip(f"ip rule add table main suppress_prefixlength 0")
 
 
-def unset_global_route_wg(ifname, table_id):
+def unset_global_route_wg(ifname, table_id, fwmark):
     ip(f"ip route del default dev {ifname} table {table_id}")
+    ip(f"ip rule del not fwmark {fwmark} table {table_id}")
     ip(f"ip rule del table main suppress_prefixlength 0")
 
 
-
-
-def test(ifname="wg-test", table_id="1234"):
+def test(ifname="wg-test", table_id="1234", fwmark=0x1234):
 
     ifname_private_key = genkey()
 
@@ -108,12 +128,16 @@ def test(ifname="wg-test", table_id="1234"):
     wg_set(ifname, ifname_private_key)
 
     peer = {}
-    peer["endpoint_addr"] = "calllive.cc"
+    peer["endpoint_addr"] = "47.12.2.14"
     peer["endpoint_port"] = 8888
     peer["allowed_ips"] = ["10.1.2.0/24"]
     peer["persistent_keepalive"] = 25
 
     wg_peer(ifname, peer_public_key, peer)
+
+    set_global_route_wg(ifname, table_id, fwmark)
+    input("已添加全局route， 测试完后，按车回清除全书路由：")
+    unset_global_route_wg(ifname, table_id, fwmark)
 
 
 if __name__ == "__main__":
