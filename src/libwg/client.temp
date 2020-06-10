@@ -1,0 +1,103 @@
+#!/bin/bash
+# date 2020-02-08 22:30:48
+# author calllivecn <c-all@qq.com>
+
+EASYWG="{{ wg }}"
+SERVER_PUBKEY="{{ server_pubkey }}"
+SERVER_ADDR="{{ server_addr }}"
+CLIENT_GENKEY="{{ client_genkey }}"
+CLIENT_PSK="{{ client_psk }}"
+
+#ADDR="10.1.1.20/24"
+ADDR="{{ addr }}"
+
+# eg: 1.1.1.0/24,10.1.1.0/24,192.168.0.0/16
+#NETS="10.1.1.0/24"
+NETS="{{ nets }}"
+
+
+ROUTE_TABLE_ID="8324"
+FWMARK="0x8324"
+
+
+check_wg_exists(){
+
+	for wg in $(ip -br link show type wireguard |awk '{print $1}')
+	do
+		if [ "$1" = "${EASYWG}" ];then
+			return 0
+		fi
+	done
+
+	return 1
+}
+
+add_wg(){
+	ip link add dev "${EASYWG}" type wireguard
+	sleep 0.5	
+	ip addr add dev "${EASYWG}" "${ADDR}"
+	
+	ip link set "${EASYWG}" up
+}
+
+del_wg(){
+	ip link del dev ${EASYWG}
+}
+
+set_wg(){
+	# client 可以不配置 listen-port 会随机使用 port
+	wg set ${EASYWG} private-key <(echo "${CLIENT_GENKEY}")
+	
+	wg set ${EASYWG} peer "${SERVER_PUBKEY}" \
+	preshared-key <(echo "${CLIENT_PSK}") \
+	endpoint "${SERVER_ADDR}" \
+	persistent-keepalive 25 \
+	allowed-ips "${NETS}"
+}
+
+
+vpn(){
+	if [ "$1"x = "up"x ];then
+		wg set "${EASYWG}" fwmark "$fwmark"
+	
+		ip route add default dev ${EASYWG} table "$route_table_id"
+	
+		ip rule add not fwmark "$fwmark" table "$route_table_id"
+	
+		ip rule add table main suppress_prefixlength 0
+	
+	elif [ "$1"x = "down"x ];then
+		ip route del default dev ${EASYWG} table "$route_table_id"
+
+		ip rule del not from all fwmark ${fwmark}
+
+		ip rule del table main suppress_prefixlength 0
+	fi
+}
+
+
+main(){
+	if [ "$1" = "up" ] && [ "$2" = "vpn" ];then
+		add_wg
+		set_wg
+		vpn "up"
+	elif [ "$1" = "down" ] && [ "$2" = "vpn" ];then
+
+		if check_wg_exists "${EASYWG}";then
+			vpn "down"
+		else
+			echo "not found wiregaurd: ${EASYWG}"
+		fi
+
+	elif [ "$1" = "down" ];then
+		del_wg >/dev/null 2>&1
+		vpn "down"
+
+	elif [ "$1" = "up" ] || [ -z "$1" ];then
+		add_wg
+		set_wg
+	fi
+
+}
+
+main "$1" "$2"
