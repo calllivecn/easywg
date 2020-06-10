@@ -2,6 +2,7 @@ import socket
 import ipaddress
 from subprocess import run, PIPE
 
+from nftables import Nftables
 from pyroute2 import IPDB, NDB, WireGuard
 
 
@@ -112,6 +113,41 @@ def unset_global_route_wg(ifname, table_id, fwmark):
     ip(f"ip route del default dev {ifname} table {table_id}")
     ip(f"ip rule del not fwmark {fwmark} table {table_id}")
     ip(f"ip rule del table main suppress_prefixlength 0")
+
+
+###########
+#
+# nftables 配置DNAT转发
+#
+###########
+
+class NftablesError(Exception):
+    pass
+
+def nft(cmd):
+    nft = Nftables()
+    nft.set_json_output(1)
+    rc, output, err = nft.cmd(cmd)
+    if rc != 0:
+        raise NftableError(f"执行错误: {err}")
+    return output
+
+def nft_dnat(ifname, network):
+    """
+    eg: ifname = easywg0, network = 10.1.1.0/24
+    """
+    for ip46 in ("ip", "ip6"):
+            
+        output = nft(f"add table {ip46} easywg")
+                        
+        output = nft(f"add chain {ip46} easywg postrouting {{ type nat hook postrouting priority 10; policy accept; }}")
+                                        
+            try:
+                ipaddress.ip_network(network)
+            except ValueError:
+                raise ValueError(f"allowed-ips: {network} 不是网络地址， 或网络地址不正确。")
+
+        output = nft(f"add rule {ip46} easywg postrouting oif {ifname} ip saddr {network} counter masquerade")
 
 
 def test(ifname="wg-test", table_id="1234", fwmark=0x1234):
