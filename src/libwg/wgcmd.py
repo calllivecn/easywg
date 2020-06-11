@@ -132,22 +132,44 @@ def nft(cmd):
         raise NftableError(f"执行错误: {err}")
     return output
 
-def nft_dnat(ifname, network):
+
+def add_forwarding(ifname, network):
     """
     eg: ifname = easywg0, network = 10.1.1.0/24
     """
-    for ip46 in ("ip", "ip6"):
-            
-        output = nft(f"add table {ip46} easywg")
-                        
-        output = nft(f"add chain {ip46} easywg postrouting {{ type nat hook postrouting priority 10; policy accept; }}")
-                                        
-            try:
-                ipaddress.ip_network(network)
-            except ValueError:
-                raise ValueError(f"allowed-ips: {network} 不是网络地址， 或网络地址不正确。")
 
-        output = nft(f"add rule {ip46} easywg postrouting oif {ifname} ip saddr {network} counter masquerade")
+    try:
+        net = ipaddress.ip_network(network)
+    except ValueError:
+        raise NftableError(f"网络地址不正确：{network}")
+
+    # nftable v0.9.3 (ubuntu 20.04) 可以不用分ip ip6。inet 是可以直接用于 nat 
+    #output = nft(f"add table inet easywg")
+    #output = nft(f"add chain inet easywg postrouting {{ type nat hook postrouting priority 10; policy accept; }}")
+
+    #if net.version == 4:
+    #    ip_version = "ip"
+    #elif net.version == 6:
+    #    ip_version = "ip6"
+
+    #output = nft(f"add rule inet easywg postrouting oif {ifname} {ip_version} saddr {network} counter masquerade")
+
+    # nftable v0.8.2 (ubuntu 18.04) 是不支持inet 用于 nat 的。
+    for ip46 in ("ip", "ip6"):
+    
+        output = nft(f"add table {ip46} easywg")
+        
+        output = nft(f"add chain {ip46} easywg postrouting {{ type nat hook postrouting priority 10; policy accept; }}")
+        
+        if ip46 == "ip" and net.version == 4:
+            output = nft(f"add rule {ip46} easywg postrouting oif {ifname} {ip46} saddr {network} counter masquerade")
+        elif ip46 == "ip6" and net.version == 6:
+            output = nft(f"add rule {ip46} easywg postrouting oif {ifname} {ip46} saddr {network} counter masquerade")
+
+
+def remove_forwarding(table_name="easywg"):
+    nft(f"delete table ip {table_name}")
+    nft(f"delete table ip6 {table_name}")
 
 
 def test(ifname="wg-test", table_id="1234", fwmark=0x1234):
