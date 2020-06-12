@@ -15,7 +15,7 @@ def pubkey(private_key):
     return p.stdout
 
 def genpsk():
-    p = run("wg pskkey", stdout=PIPE, text=True)
+    p = run("wg genpsk".split(), stdout=PIPE, text=True)
     return p.stdout
 
 def add_wg(ifname, ip):
@@ -172,7 +172,50 @@ def remove_forwarding(table_name="easywg"):
     nft(f"delete table ip6 {table_name}")
 
 
-def test(ifname="wg-test", table_id="1234", fwmark=0x1234):
+
+
+############
+#
+# test 
+#
+############
+
+
+def test_server():
+
+    s_private_key = genkey()
+
+    s_public_key = pubkey(s_private_key)
+
+    c_private_key = genkey()
+
+    c_public_key = pubkey(c_private_key)
+
+    psk_key = genpsk()
+
+    ifname = "server-wg0"
+    add_wg(ifname, "10.1.2.1/24")
+
+    wg_set(ifname, s_private_key, 8324)
+
+    peer = {
+        "preshared_key": psk_key,
+        "endpoint_addr": "www.baidu.com",
+        "endpoint_port": 8324,
+        "persistent_keepalive": 25,
+        "allowed_ips": ["10.1.2.2/32"]
+    }
+
+    wg_peer(ifname, c_public_key, peer)
+
+    input("server wireguard 启动完成, 测试后，按回车退出: [enter:]")
+
+    del_wg(ifname)
+    print(f"删除 {ifname} 退出。")
+
+
+
+def test_client(ifname="wg-test", table_id="1234", fwmark=0x1234):
 
     ifname_private_key = genkey()
 
@@ -199,4 +242,5 @@ def test(ifname="wg-test", table_id="1234", fwmark=0x1234):
 
 
 if __name__ == "__main__":
-    test()
+    test_server()
+    #test_client()
