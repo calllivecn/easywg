@@ -160,11 +160,15 @@ def add_forwarding(ifname, network):
         output = nft(f"add table {ip46} easywg")
         
         output = nft(f"add chain {ip46} easywg postrouting {{ type nat hook postrouting priority 10; policy accept; }}")
+
+        output = nft(f"add chain {ip46} easywg forward {{ type filter hook forward priority 10; policy accept; }}")
         
         if ip46 == "ip" and net.version == 4:
             output = nft(f"add rule {ip46} easywg postrouting oif {ifname} {ip46} saddr {network} counter masquerade")
+            output = nft(f"add rule {ip46} easywg forward {ip46} saddr {network} counter accept")
         elif ip46 == "ip6" and net.version == 6:
             output = nft(f"add rule {ip46} easywg postrouting oif {ifname} {ip46} saddr {network} counter masquerade")
+            output = nft(f"add rule {ip46} easywg forward {ip46} saddr {network} counter accept")
 
 
 def remove_forwarding(table_name="easywg"):
