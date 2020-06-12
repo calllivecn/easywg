@@ -17,9 +17,12 @@ from django.contrib import admin
 from django.urls import path, include
 from django.contrib.staticfiles.views import serve
 
+from wg.views import 
+
 from jquery.views import Jquery
 
 urlpatterns = [
+    path("users/"),
     path("jquery/", Jquery.as_view(), name="jquery"),
     path("favicon.ico", serve, {"path": "wg.ico"}),
     path('admin/', admin.site.urls),
