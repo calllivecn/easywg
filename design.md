@@ -25,9 +25,11 @@
 
     使用方式：
 
+    当 format = shell 时, client = linux;
+
     ```shell
     curl -H "USERNAME: $your_name" -H "PASSWORD: $your_pw" -o wg-cfg.conf \
-    "https://wg-service.com/?format=conf&client=window&ip-type=auto"
+    "https://wg-service.com/?format=conf&client=window"
     ```
 
 - 可以为 linux 生成 shell 配置

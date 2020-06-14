@@ -1,2 +1,4 @@
 {
+	"python.PythonePath": "/home/zx/.venv/easywg/bin/python3",
+	"python.formatting.provider": "black"
 }
