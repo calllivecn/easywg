@@ -7,5 +7,5 @@ def json(j):
 def resok(msg="successful"):
     return json({"code": 0, "msg": msg})
 
-def reserr(code=-1, msg):
+def reserr(msg, code=-1):
     return json({"code": code, "msg": msg})

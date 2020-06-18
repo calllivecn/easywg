@@ -36,9 +36,9 @@ INSTALLED_APPS = [
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
-    'django.contrib.staticfiles',
+    #'django.contrib.staticfiles',
 
-    "jquery.apps.JqueryConfig",
+    "wg.apps.WgConfig",
 ]
 
 MIDDLEWARE = [
@@ -122,6 +122,8 @@ USE_TZ = True
 
 # 这是url里的静态文件路径前缀
 STATIC_URL = '/static/'
+
+WEB_ROOT = os.path.join(BASE_DIR, "web_root")
 
 # 这是实际在文件系统里找静态文件的路径。
 STATICFILES_DIRS = [
