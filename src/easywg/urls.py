@@ -14,16 +14,34 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 from django.contrib import admin
-from django.urls import path, include
-from django.contrib.staticfiles.views import serve
+from django.urls import path, re_path, include
+from django.views.static import serve
 
-from wg.views import 
 
-from jquery.views import Jquery
+from easywg import settings
+from wg.views import WgServerApi
+
+def static_serve(request, path):
+    return serve(request, path, document_root=settings.WEB_ROOT)
+
+def index(request):
+    return static_serve(request, "index.html")
 
 urlpatterns = [
-    path("users/"),
-    path("jquery/", Jquery.as_view(), name="jquery"),
-    path("favicon.ico", serve, {"path": "wg.ico"}),
-    path('admin/', admin.site.urls),
+    path("", index),
+    path("favicon.ico", static_serve, {"path": "favicon.ico"}),
+
+    #path("users/",),
+
+    #path('admin/', admin.site.urls),
 ]
+
+staticfiles = (
+    "^(?P<path>.*\.html)$", 
+    "^(?P<path>.*\.js)$",
+    "^(?P<path>.*\.css)$",
+    "^(?P<path>.*\.map)$",
+)
+
+for p in staticfiles:
+    urlpatterns.append(re_path(p, static_serve))

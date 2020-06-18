@@ -6,7 +6,7 @@ from django.views import View
 from django.http import HttpRequest, JsonResponse
 
 
-from libwg.funcs import res, resok, reserr
+from libwg.funcs import json, resok, reserr
 from wg.models import User
 
 
@@ -26,7 +26,7 @@ class WgServerApi(View):
         return super().dispatch(request, *args, **kwargs)
 
     def get(self, request):
-        
+        temp = ""
         return render()
 
 
@@ -37,7 +37,7 @@ class WgClientApi(View):
         pw = request.header.get("HTTP_WG_PASSWORD")
         auth = authenticate(username=username, password=pw)
         if auth is None:
-            return reserr( -1, "用户名或密码错误")
+            return reserr("用户名或密码错误", -1)
         else:
             return super().dispatch(request, *args, **kwargs)
 
