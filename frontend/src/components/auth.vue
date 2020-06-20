@@ -5,7 +5,7 @@
             {{ dataget }}
         </label>
         <br/>
-        <button v-on:click="get">从后台全数据</button>
+        <button v-on:click="get">从后台拿数据</button>
     </div>
 </template>
 
@@ -31,6 +31,7 @@
                     function(res){
                         console.log("this: ", this)
                         console.log("error")
+                        this.dataget = res
                     })
             }
         },

@@ -10,7 +10,7 @@ class Auth(View):
         username = req.META.get("HTTP_WG_USERNAME")
         password = req.META.get("HTTP_WG_PASSWORD")
 
-        #auth = authenticate(username=username, password=password)
+        auth = authenticate(username=username, password=password)
         auth = None
         if auth is None:
             return reserr("用户名或密码错误")
