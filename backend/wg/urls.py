@@ -6,7 +6,7 @@
 
 from django.urls import path
 
-from wg.auth import Auth
+from wg.authuser import Auth
 
 urlpatterns = [
     path("", Auth.as_view()),
