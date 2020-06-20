@@ -12,7 +12,7 @@ from django.core.management import (
 
 
 def main():
-    os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'djhello.settings')
+    os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'easywg.settings')
     django.setup()
 
     settings.debug = False
