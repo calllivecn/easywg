@@ -31,6 +31,7 @@ urlpatterns = [
     path("", index),
     path("favicon.ico", static_serve, {"path": "favicon.ico"}),
 
+    path("auth/", include("wg.urls"))
     #path("users/",),
 
     #path('admin/', admin.site.urls),
