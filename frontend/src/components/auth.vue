@@ -1,11 +1,11 @@
 <template>
-    <div>
+    <div id="auth">
         <h1 v-text="title">Authenticate</h1>
         <label id="showget">
             {{ dataget }}
         </label>
         <br/>
-        <button v-on:click="get">从后台拿数据</button>
+        <button v-on:click="get">验证当前用户</button>
     </div>
 </template>
 
@@ -18,20 +18,21 @@
                 dataget: "没执行前的数据值",
             }
         },
+        mounted: function(){
+            console.log("Auth 组件 mounted完成")
+        },
         methods: {
             get: function(){
-                this.axios.defaults.baseURL = "http://127.0.0.1:8880/"
-
+                var vm = this
                 this.axios.get("/auth")
                 .then(
                     function(res){
-                        console.log("res:", res)
-                        this.dataget = res
+                        console.log("this:", vm)
+                        vm.dataget = res.data
                     },
                     function(res){
-                        console.log("this: ", this)
                         console.log("error")
-                        this.dataget = res
+                        vm.dataget = res
                     })
             }
         },
