@@ -15,7 +15,7 @@ export default {
         }
     },
     methods:{
-        myinterface:function(){
+        myinterfaces:function(){
             this.router.push({path: "/myinterfaces"})
         },
         serverwg:function(){
