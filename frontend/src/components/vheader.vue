@@ -11,7 +11,7 @@
 
 <script>
 export default {
-    name: "bar",
+    name: "v-header",
     data: function(){
         return {
             usertype: "游客",
@@ -20,14 +20,15 @@ export default {
     },
     methods:{
         logout: function(){
+            var vm = this
             this.axios.get("/logout")
             .then(function(){
                 console.log("退出")
-                this.router.push({path: "/"})
+                vm.router.push({path: "/"})
             })
             .catch(function(){
                 console.log("退出失败")
-                this.router.push({path: "/"})
+                vm.router.push({path: "/"})
             })
         }
     }
@@ -39,7 +40,10 @@ export default {
 <style>
 #userinfo {
     position: absolute;
-    right: 1%;
+    right: 0%;
+
+    height: 4vw;
+    width: 4vw;
 
     border-style: solid;
     border-width: 1px;

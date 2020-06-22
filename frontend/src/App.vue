@@ -1,28 +1,30 @@
 <template>
-  <div id="app">
-    <div id="header">
-      <v-header></v-header>
+  <div id="app" class="show">
+    <div id="header" class="show">
+      <vheader></vheader>
     </div>
 
-    <div id="router-view">
-      <router-view/>
-    </div>
+    <leftmenu class="show"></leftmenu>
 
-    <div id=auth>
+    <router-view id="context" class="show"></router-view>
+
+    <div id=auth class="show">
       <auth></auth>
     </div>
   </div>
 </template>
 
 <script>
-import bar from "@/components/bar"
+import vheader from "@/components/vheader"
+import leftmenu from "@/components/leftmenu"
 import HelloWorld from '@/components/HelloWorld'
 import auth from '@/components/auth'
 
 export default {
   name: 'App',
   components: {
-    "v-header": bar,
+    vheader,
+    leftmenu,
     auth,
   }
 }
@@ -35,17 +37,35 @@ export default {
   -moz-osx-font-smoothing: grayscale;
   text-align: center;
   color: #2c3e50;
-  margin-top: 60px;
+  margin-top: 0px;
+
+  width: 100%;
+
+  position: relative;
+  top: 0%;
 }
 #header {
-    width: 100%;
-    height: 10%;
+  height: 4vw;
+  width: 100%;
 
-    position: sticky;
-    top: 0%;
+  position: relative;
+  top: 0%;
 
-    border-style: solid;
-    border-width: 1px;
-    border-color: black;
+}
+#leftmenu {
+  position: relative;
+  top: 0px;
+  left: 0px;
+  width: 200px;
+}
+#router-view {
+  position: relative;
+  top: 0px;
+  right: 0px;
+}
+.show{
+  border-style: solid;
+  border-width: 1px;
+  border-color: black;
 }
 </style>
