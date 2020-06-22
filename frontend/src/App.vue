@@ -6,7 +6,8 @@
 
     <leftmenu class="show"></leftmenu>
 
-    <router-view id="context" class="show"></router-view>
+    <!-- <router-view id="context" class="show"></router-view> -->
+    <HelloWorld id="context" class="show"></HelloWorld>
 
     <div id=auth class="show">
       <auth></auth>
@@ -25,6 +26,7 @@ export default {
   components: {
     vheader,
     leftmenu,
+    HelloWorld,
     auth,
   }
 }
@@ -54,13 +56,18 @@ export default {
 }
 #leftmenu {
   position: relative;
-  top: 0px;
+  top:0%;
   left: 0px;
   width: 200px;
 }
+#context {
+  position: relative;
+  left: 200px;
+  right: 0px;
+
+}
 #router-view {
   position: relative;
-  top: 0px;
   right: 0px;
 }
 .show{
