@@ -1,10 +1,7 @@
 <template>
     <div id="auth">
-        <h1 v-text="title">Authenticate</h1>
-        <label id="showget">
-            {{ dataget }}
-        </label>
-        <br/>
+        <p v-text="title">Authenticate</p>
+        <p id="showget">{{ dataget }}</p>
         <button v-on:click="get">验证当前用户</button>
     </div>
 </template>

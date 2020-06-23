@@ -1,10 +1,12 @@
 <template>
-    <div id="userinfo">
-            <label id="usertype">{{ usertype }}</label>
-            <br>
-            <label id="username">用户： {{ username }}</label>
-            <br>
-            <label id="logout" v-on:click="logout">退出</label>
+    <div id="userinfo" class="show">
+            <div id="username">
+                <label>用户： {{ username }}</label>
+            </div>
+            <div id="logout">
+                <!-- <label v-on:click="logout">点击退出</label> -->
+                <button v-on:click="logout">点击退出</button>
+            </div>
     </div>
 </template>
 
@@ -14,8 +16,7 @@ export default {
     name: "v-header",
     data: function(){
         return {
-            usertype: "游客",
-            username: "无名"
+            username: "游客"
         }
     },
     methods:{
@@ -24,11 +25,11 @@ export default {
             this.axios.get("/logout")
             .then(function(){
                 console.log("退出")
-                vm.router.push({path: "/"})
+                vm.$router.push({path: "/"})
             })
             .catch(function(){
                 console.log("退出失败")
-                vm.router.push({path: "/"})
+                vm.$router.push({path: "/"})
             })
         }
     }
@@ -40,13 +41,17 @@ export default {
 <style>
 #userinfo {
     position: absolute;
-    right: 0%;
+    right: 1px;
+    height: 4rem;
+}
 
-    height: 4vw;
-    width: 4vw;
+#username {
+    position: relative;
+    top: 1px;
+}
 
-    border-style: solid;
-    border-width: 1px;
-    border-color: black;
+#logout {
+    position: relative;
+    bottom: 1px;
 }
 </style>

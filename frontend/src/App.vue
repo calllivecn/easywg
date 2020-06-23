@@ -4,12 +4,15 @@
       <vheader></vheader>
     </div>
 
-    <leftmenu class="show"></leftmenu>
+    <div id="center" class="show">
+      <leftmenu class="show"></leftmenu>
+      <!-- <router-view id="context" class="show"></router-view> -->
+      <div id="print" class="show">
+        <showtime></showtime>
+      </div>
+    </div>
 
-    <!-- <router-view id="context" class="show"></router-view> -->
-    <HelloWorld id="context" class="show"></HelloWorld>
-
-    <div id=auth class="show">
+    <div id="bottom" class="show">
       <auth></auth>
     </div>
   </div>
@@ -18,7 +21,7 @@
 <script>
 import vheader from "@/components/vheader"
 import leftmenu from "@/components/leftmenu"
-import HelloWorld from '@/components/HelloWorld'
+import showtime from '@/components/showtime'
 import auth from '@/components/auth'
 
 export default {
@@ -26,7 +29,7 @@ export default {
   components: {
     vheader,
     leftmenu,
-    HelloWorld,
+    showtime,
     auth,
   }
 }
@@ -34,43 +37,50 @@ export default {
 
 <style>
 #app {
-  font-family: 'Avenir', Helvetica, Arial, sans-serif;
+  /*
+  color: #2c3e50;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  position: relative;
+  */
+  font-family: 'Avenir', Helvetica, Arial, sans-serif;
   text-align: center;
-  color: #2c3e50;
-  margin-top: 0px;
 
-  width: 100%;
-
-  position: relative;
-  top: 0%;
-}
-#header {
-  height: 4vw;
-  width: 100%;
-
-  position: relative;
-  top: 0%;
-
-}
-#leftmenu {
-  position: relative;
-  top:0%;
+  padding: 2px;
+  margin: auto;
+  position: absolute;
+  top: 0px;
   left: 0px;
-  width: 200px;
-}
-#context {
-  position: relative;
-  left: 200px;
   right: 0px;
 
+  width: 95%;
 }
-#router-view {
+
+#header {
   position: relative;
-  right: 0px;
+  top: 1px;
+  height: 4em;
+  width: 100%;
 }
-.show{
+
+#center {
+  position: relative;
+  width: 100%;
+  display: flex;
+}
+
+#print {
+  display: inline;
+  width: 100%;
+}
+
+#bottom {
+  position: relative;
+  top: 1px;
+  width: 100%;
+}
+
+.show {
   border-style: solid;
   border-width: 1px;
   border-color: black;
