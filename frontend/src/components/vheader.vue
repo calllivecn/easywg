@@ -1,11 +1,11 @@
 <template>
     <div id="userinfo" class="show">
             <div id="username">
-                <label>用户： {{ username }}</label>
+                <span>用户： {{ username }}</span>
             </div>
             <div id="logout">
-                <!-- <label v-on:click="logout">点击退出</label> -->
-                <button v-on:click="logout">点击退出</button>
+                <span v-if="this.username == '游客'" v-on:click="login">点击登录</span>
+                <span v-else v-on:click="logout">点击退出</span>
             </div>
     </div>
 </template>
@@ -20,12 +20,19 @@ export default {
         }
     },
     methods:{
+        login: function(){
+            var vm = this
+            this.axios.post("/login", {
+                "username":  "none"
+                }
+            )
+        },
         logout: function(){
             var vm = this
             this.axios.get("/logout")
             .then(function(){
                 console.log("退出")
-                vm.$router.push({path: "/"})
+                vm.$router.push({path: "/login"})
             })
             .catch(function(){
                 console.log("退出失败")
