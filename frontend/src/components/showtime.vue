@@ -1,5 +1,5 @@
 <template>
-  <div class="hello">
+  <div class="show">
     <h1 v-for="i in 10">{{ msg }}</h1>
     <h2>Essential Links</h2>
   </div>
@@ -7,7 +7,7 @@
 
 <script>
 export default {
-  name: 'HelloWorld',
+  name: 'showtime',
   data () {
     return {
       msg: 'Welcome to Your Vue.js App'
@@ -21,7 +21,3 @@ export default {
 
 <!-- Add "scoped" attribute to limit CSS to this component only
 <style scoped> -->
-
-<style>
-
-</style>

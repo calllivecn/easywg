@@ -1,7 +1,7 @@
 <template>
     <div id="leftmenu">
-        <label v-on:click="myinterfaces">My WireGuard</label>
-        <label v-on:click="serverwg">Server WireGuard</label>
+        <nobr v-on:click="serverwg"><u>Server WireGuard</u></nobr>
+        <nobr v-on:click="myinterfaces"><u>My WireGuard</u></nobr>
     </div>
 </template>
 
@@ -27,3 +27,15 @@ export default {
 </script>
 
 
+<style>
+#leftmenu {
+    display: inline;
+    text-align: left;
+    text-decoration: underline;
+    /*
+    width: 1rem;
+    position: relative;
+    left: 1pm;
+    */
+}
+</style>
