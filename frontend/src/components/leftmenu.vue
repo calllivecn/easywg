@@ -1,7 +1,8 @@
 <template>
     <div id="leftmenu">
-        <nobr v-on:click="serverwg"><u>Server WireGuard</u></nobr>
-        <nobr v-on:click="myinterfaces"><u>My WireGuard</u></nobr>
+        <label v-on:click="serverwg"><u>Server WireGuard</u></label>
+        <br>
+        <label v-on:click="myinterfaces"><u>My WireGuard</u></label>
     </div>
 </template>
 
@@ -15,12 +16,12 @@ export default {
         }
     },
     methods:{
+        serverwg:function(){
+            this.router.push({paht: "/serverwg"})
+        },
         myinterfaces:function(){
             this.router.push({path: "/myinterfaces"})
         },
-        serverwg:function(){
-            this.router.push({paht: "/serverwg"})
-        }
     }
 
 }

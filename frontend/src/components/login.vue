@@ -1,9 +1,11 @@
 <template>
-    <div id="login">
+    <div id="login" class="show">
         <p v-if="prompt">用户名或密码错误！</p>
-        <span><input v-model="username" placeholder="请输入用户名"></span>
-        <span><input v-model="password" type="password" placeholder="请输入用户名"></span>
-        <span><input type="submit" @click="login" placeholder="请输入用户名"></span>
+        <span>用户名：</span><input v-model="username" placeholder="请输入用户名">
+        <br>
+        <span>密码</span><input v-model="password" type="password" placeholder="请输入密码">
+        <br>
+        <input type="submit" @click="login" placeholder="请输入用户名" value="登录">
     </div>
 </template>
 
@@ -29,15 +31,24 @@ export default {
                     if(data.code == 0){
                         vm.$router.push({path: "/"})
                     }else {
+                        alert("用户名或密码错误")
+                        // 这里写一个弹窗 提示用户名或密码错误
                         vm.prompt = true
                     }
                 },
                 function(data){
                     console.log("请求错误")
-                    vm.$router.push({path: "/"})
+                    //vm.$router.push({path: "/"})
                 }
             )
         }
     }
 }
 </script>
+
+<style>
+#login {
+    position: relative;
+    top: 4rem;
+}
+</style>

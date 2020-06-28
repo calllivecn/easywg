@@ -1,27 +1,23 @@
 import Vue from 'vue'
 import Router from 'vue-router'
-import showtime from '@/components/showtime'
-import auth from '@/components/auth'
+
+import home from '@/components/home'
 import login from '@/components/login'
 
 Vue.use(Router)
 
 export default new Router({
+  //mode: "history",
   routes: [
+    {
+      path: '/',
+      name: 'home',
+      component: home
+    },
     {
       path: "/login",
       name: "login",
       component: login
     },
-    {
-      path: '/',
-      name: 'showtime',
-      component: showtime
-    },
-    {
-      path: "/auth",
-      name: "auth",
-      component: auth
-    }
   ]
 })

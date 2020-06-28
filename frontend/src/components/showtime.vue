@@ -1,6 +1,6 @@
 <template>
   <div class="show">
-    <h1 v-for="i in 10">{{ msg }}</h1>
+    <h1 >{{ msg }}</h1>
     <h2>Essential Links</h2>
   </div>
 </template>
