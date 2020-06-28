@@ -4,6 +4,7 @@
                 <span>用户： {{ username }}</span>
             </div>
             <div id="logout">
+                <!-- <login v-if="this.username == '游客'" v-on:click="login">点击登录</login> -->
                 <span v-if="this.username == '游客'" v-on:click="login">点击登录</span>
                 <span v-else v-on:click="logout">点击退出</span>
             </div>
@@ -21,18 +22,15 @@ export default {
     },
     methods:{
         login: function(){
-            var vm = this
-            this.axios.post("/login", {
-                "username":  "none"
-                }
-            )
+            console.log("this.$router:", this.$router)
+            this.$router.push({path: "/login"})
         },
         logout: function(){
             var vm = this
             this.axios.get("/logout")
             .then(function(){
                 console.log("退出")
-                vm.$router.push({path: "/login"})
+                vm.$router.push({path: "/logout"})
             })
             .catch(function(){
                 console.log("退出失败")
