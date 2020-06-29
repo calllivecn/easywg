@@ -21,7 +21,7 @@
         methods: {
             get: function(){
                 var vm = this
-                this.axios.get("/auth")
+                this.axios.post("/accounts/auth/")
                 .then(
                     function(res){
                         console.log("this:", vm)

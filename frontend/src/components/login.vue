@@ -22,16 +22,19 @@ export default {
     methods:{
         login: function(){
             var vm = this
-            this.axios.post("/login", {
-                "username": this.username,
-                "password": this.password
+            this.axios.post("/accounts/login/", {
+                "un": this.username,
+                "pw": this.password
             })
             .then(
-                function(data){
-                    if(data.code == 0){
-                        vm.$router.push({path: "/"})
+                function(res){
+                    if(res.data.code == 0){
+
+                        vm.$router.push({name: "home", params: {username: vm.username} })
+
+                        console.log(vm.username)
                     }else {
-                        alert("用户名或密码错误")
+                        //alert("用户名或密码错误")
                         // 这里写一个弹窗 提示用户名或密码错误
                         vm.prompt = true
                     }

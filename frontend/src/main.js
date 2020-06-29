@@ -11,6 +11,10 @@ import router from './router'
 //Vue.use(VueAxios, axios)
 
 import axios from 'axios'
+
+axios.defaults.xsrfCookieName = 'csrftoken'
+axios.defaults.xsrfHeaderName = 'X-CSRFToken'
+
 Vue.prototype.axios = axios 
 
 Vue.config.productionTip = false
