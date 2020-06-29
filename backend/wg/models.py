@@ -14,7 +14,6 @@ from django.contrib.auth.models import User
 class ServerWg(models.Model):
     ifname = models.CharField(max_length=32, unique=True)
     privatekey = models.CharField(max_length=64)
-    presharedkey = models.CharField(max_length=64)
     listenport = models.IntegerField(blank=True, null=True)
     allowedips = models.TextField(null=True)
 

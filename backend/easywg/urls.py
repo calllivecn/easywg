@@ -31,8 +31,7 @@ urlpatterns = [
     path("", index),
     path("favicon.ico", static_serve, {"path": "favicon.ico"}),
 
-    path("auth/", include("wg.urls"))
-    #path("users/",),
+    path("accounts/", include("wg.urls"))
 
     #path('admin/', admin.site.urls),
 ]
@@ -46,3 +45,5 @@ staticfiles = (
 
 for p in staticfiles:
     urlpatterns.append(re_path(p, static_serve))
+
+urlpatterns.append(re_path(".*", index))

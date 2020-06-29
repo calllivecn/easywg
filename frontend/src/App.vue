@@ -9,7 +9,7 @@
 export default {
   name: 'App',
   mounted: function(){
-    console.log("怎么判断用户是否登录??")
+    console.log("App.vue 怎么判断用户是否登录??")
   }
 }
 </script>

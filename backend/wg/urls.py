@@ -6,8 +6,10 @@
 
 from django.urls import path
 
-from wg.authuser import Auth
+from wg.authuser import Auth, Login
 
 urlpatterns = [
-    path("", Auth.as_view()),
+    path("login/", Login.as_view()),
+    path("logout/", Login.as_view()),
+    path("auth/", Auth.as_view()),
 ]
