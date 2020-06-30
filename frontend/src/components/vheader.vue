@@ -28,13 +28,19 @@ export default {
         }
         */
 
-        if(!document.cookie.match("session")){
+        console.log("cookie:", document.cookie)
+        /*
+        if(!document.cookie.match("sessionid")){
+            this.$router.push({path: "/login"})
+        }
+        */
+        if(sessionStorage.logined != '1'){
             this.$router.push({path: "/login"})
         }
     },
     mounted: function(){
-        console.log("mounted username:", this.$route.params.username)
-        this.username = this.$route.params.username
+        console.log("mounted username:", sessionStorage.username)
+        this.username = sessionStorage.username
     },
     methods:{
         login: function(){
