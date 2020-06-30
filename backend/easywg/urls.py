@@ -19,7 +19,7 @@ from django.views.static import serve
 
 
 from easywg import settings
-from wg.views import WgServerApi
+from wg.views import WgServerApi, WgClientApi
 
 def static_serve(request, path):
     return serve(request, path, document_root=settings.WEB_ROOT)
@@ -31,7 +31,8 @@ urlpatterns = [
     path("", index),
     path("favicon.ico", static_serve, {"path": "favicon.ico"}),
 
-    path("accounts/", include("wg.urls"))
+    path("accounts/", include("wg.urls")),
+    path("myinterfaces/", ),
 
     #path('admin/', admin.site.urls),
 ]

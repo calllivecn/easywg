@@ -1,6 +1,6 @@
 <template>
   <div class="show">
-    <h1 >{{ msg }}</h1>
+    <h1>{{ msg }}</h1>
     <h2>Essential Links</h2>
   </div>
 </template>
@@ -10,7 +10,7 @@ export default {
   name: 'showtime',
   data () {
     return {
-      msg: 'Welcome to Your Vue.js App'
+      msg: '连接信息'
     }
   },
   mounted: function(){

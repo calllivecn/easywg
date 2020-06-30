@@ -30,10 +30,10 @@ export default {
                 function(res){
                     if(res.data.code == 0){
 
-                        //vm.$router.push({name: "home", params: {username: vm.username} })
                         vm.$router.push({name: "home"})
 
                         sessionStorage.username = vm.username
+                        sessionStorage.superuser = res.data.superuser
                         sessionStorage.logined = '1'
 
                         console.log(vm.username)
@@ -45,9 +45,8 @@ export default {
                         vm.prompt = true
                     }
                 },
-                function(data){
-                    console.log("请求错误")
-                    //vm.$router.push({path: "/"})
+                function(res){
+                    console.log("请求出错")
                 }
             )
         }

@@ -1,12 +1,12 @@
-<template>
+<template> 
     <div id="userinfo" class="show">
-            <div id="username">
-                <span v-if="this.username != null">用户：{{ username }}</span>
-            </div>
-            <div id="logout">
-                <span v-if="this.username == null" v-on:click="login">点击登录</span>
-                <span v-else v-on:click="logout">点击退出</span>
-            </div>
+        <div id="username">
+            <span v-if="this.username != null">用户：{{ username }}</span>
+        </div>
+        <div id="logout">
+            <span v-if="this.username == null" v-on:click="login">点击登录</span>
+            <span v-else v-on:click="logout">点击退出</span>
+        </div>
     </div>
 </template>
 
@@ -20,41 +20,24 @@ export default {
         }
     },
     created: function(){
-        /*
-        console.log("created: 执行了吗？", typeof(this.username))
-        if(typeof(this.$route.params.username) == "undefined"){
-
-            this.$router.push({path: "/login"})
-        }
-        */
-
-        console.log("cookie:", document.cookie)
-        /*
-        if(!document.cookie.match("sessionid")){
-            this.$router.push({path: "/login"})
-        }
-        */
         if(sessionStorage.logined != '1'){
             this.$router.push({path: "/login"})
         }
     },
     mounted: function(){
-        console.log("mounted username:", sessionStorage.username)
         this.username = sessionStorage.username
     },
     methods:{
         login: function(){
             this.$router.push({path: "/login"})
         },
+
         logout: function(){
-
             var vm = this
-
             this.axios.get("/accounts/logout")
             .then(function(){
                 console.log("退出")
-                document.cookie = ""
-                vm.$router.push({path: "/login"})
+                localStorage.clear()
             })
             .catch(function(){
                 console.log("退出失败")
@@ -62,7 +45,6 @@ export default {
             })
         }
     }
-
 }
 </script>
 
