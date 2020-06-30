@@ -30,12 +30,18 @@ export default {
                 function(res){
                     if(res.data.code == 0){
 
-                        vm.$router.push({name: "home", params: {username: vm.username} })
+                        //vm.$router.push({name: "home", params: {username: vm.username} })
+                        vm.$router.push({name: "home"})
+
+                        sessionStorage.username = vm.username
+                        sessionStorage.logined = '1'
 
                         console.log(vm.username)
                     }else {
                         //alert("用户名或密码错误")
                         // 这里写一个弹窗 提示用户名或密码错误
+
+                        // 提示密码错误
                         vm.prompt = true
                     }
                 },
