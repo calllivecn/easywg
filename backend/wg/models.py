@@ -3,7 +3,7 @@ from django.contrib.auth.models import User
 
 # Create your models here.
 
-#class Users(models.Model):
+# class Users(models.Model):
 #    username = models.CharField(max_length=64, primary_key=True, unique=True)
 #    salt = models.CharField(max_length=32)
 #    password = models.CharFireld(max_length=64)
@@ -12,17 +12,29 @@ from django.contrib.auth.models import User
 
 
 class ServerWg(models.Model):
-    ifname = models.CharField(max_length=32, unique=True)
+    ifname = models.CharField(max_length=64, unique=True)
+    ip = models.CharField(max_length=64)
     privatekey = models.CharField(max_length=64)
+    publickey = models.CharField(max_length=64)
     listenport = models.IntegerField(blank=True, null=True)
-    allowedips = models.TextField(null=True)
+    persistentkeepalive = models.IntegerField(default=25)
 
+    boot = models.BooleanField(default=True)
+
+    comment = models.TextField(max_length=128, blank=False, null=False)
 
 class ClientWg(models.Model):
     server = models.ForeignKey(ServerWg, on_delete=models.CASCADE)
     user = models.ForeignKey(User, on_delete=models.CASCADE)
-    ifname = models.CharField(max_length=32, unique=True)
+    ip = models.CharField(max_length=64)
+    ifname = models.CharField(max_length=64, unique=True)
     privatekey = models.CharField(max_length=64)
+    publickey = models.CharField(max_length=64)
     presharedkey = models.CharField(max_length=64)
     listenport = models.IntegerField(blank=True, null=True)
-    allowedips = models.TextField()
+    persistentkeepalive = models.IntegerField(default=25)
+
+    allowedips_s = models.TextField(max_length=4096)
+    allowedips_c = models.TextField(max_length=4096)
+
+    comment = models.TextField(max_length=128, blank=False, null=False)

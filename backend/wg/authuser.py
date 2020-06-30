@@ -1,5 +1,5 @@
 from django.contrib.auth import authenticate, login, logout
-from django.contrib.auth.models import User
+from django.contrib.auth.models import User, UserManager
 from django.views import View
 
 from libwg.funcs import json, resok, reserr
@@ -14,12 +14,9 @@ class Login(View):
     # login
     def post(self, req):
 
-        username = req.META.get("HTTP_WG_UN")
-        password = req.META.get("HTTP_WG_PW")
-
-        if username is None:
-            username = req.META["WG_BODY"].get("un")
-            password = req.META["WG_BODY"].get("pw")
+        js = req.META["WG_BODY"]
+        username = js.get("un")
+        password = js.get("pw")
         
         print("un:", username, "pw:", password)
 
@@ -31,7 +28,7 @@ class Login(View):
             return reserr("用户名或密码错误")
         else:
             login(req, auth)
-            return resok("ok")
+            return json({"code": 0, "msg": "ok", "superuser": auth.is_superuser})
 
 
 class Auth(View):
@@ -43,7 +40,9 @@ class Auth(View):
         else:
             return resok("未登录")
 
+"""
 class UserManger(View):
 
     def dispatch(request, *args, **kwargs):
         return super().dispatch(request, *args, **kwargs)
+"""

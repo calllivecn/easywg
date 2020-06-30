@@ -1,6 +1,6 @@
 <template>
     <div id="leftmenu">
-        <label v-on:click="serverwg"><u>Server WireGuard</u></label>
+        <label v-if="this.superuser" v-on:click="serverwg"><u>Server WireGuard</u></label>
         <br>
         <label v-on:click="myinterfaces"><u>My WireGuard</u></label>
     </div>
@@ -12,15 +12,18 @@ export default {
     name: "leftmenu",
     data: function(){
         return {
-
+            superuser: null
         }
     },
+    created: function(){
+        this.superuser = sessionStorage.superuser
+    },
     methods:{
-        serverwg:function(){
-            this.router.push({paht: "/serverwg"})
+        serverwg: function(){
+            this.$router.push({path: "/serverwg"})
         },
-        myinterfaces:function(){
-            this.router.push({path: "/myinterfaces"})
+        myinterfaces: function(){
+            this.$router.push({path: "/myinterfaces"})
         },
     }
 

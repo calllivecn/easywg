@@ -4,12 +4,7 @@
       <vheader></vheader>
     </div>
 
-    <div id="center" class="show">
-      <leftmenu class="show"></leftmenu>
-      <div id="print" class="show">
-        <showtime></showtime>
-      </div>
-    </div>
+    <center></center>
 
     <div id="bottom" class="show">
       <auth></auth>
@@ -19,39 +14,25 @@
 
 <script>
 import vheader from "@/components/vheader"
-import leftmenu from "@/components/leftmenu"
-import showtime from '@/components/showtime'
+import center from '@/components/center'
 import auth from '@/components/auth'
 
 export default {
   name: 'home',
   components: {
     vheader,
-    leftmenu,
-    showtime,
+    center,
     auth,
   }
 }
 </script>
 
 <style>
-
 #header {
   position: relative;
   top: 1px;
   height: 4em;
   width: 100%;
-}
-
-#center {
-  position: relative;
-  width: 100%;
-  display: flex;
-}
-
-#print {
-  display: inline;
-  /* width: 100%; */
 }
 
 #bottom {

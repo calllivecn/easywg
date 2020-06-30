@@ -16,7 +16,7 @@
             }
         },
         mounted: function(){
-            console.log("Auth 组件 mounted完成")
+            console.log("Auth 组件 mounted 完成")
         },
         methods: {
             get: function(){
@@ -24,7 +24,6 @@
                 this.axios.post("/accounts/auth/")
                 .then(
                     function(res){
-                        console.log("this:", vm)
                         vm.dataget = res.data
                     },
                     function(res){
