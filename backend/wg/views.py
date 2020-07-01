@@ -34,7 +34,14 @@ class WgServerApi(View):
         wg = request.META["WG_BODY"]
 
         iface = wg.get("iface")
-        ip = wg.get("ip")
+        net = wg.get("net")
+
+        if net is None:
+            return reserr("network 是必须的", -1)
+        else:
+            if ServerWg.objects.get(net=net).exists():
+                return reserr(f"network {net} 冲突！", -1)
+
         privatekey = wg.get("privatekey")
         #publickey = 
         listenport = wg.get("listenport")
@@ -47,17 +54,14 @@ class WgServerApi(View):
         if not iface:
             iface = "easywg"
         
-        if not ip:
-            for ips in models.ServerWg.objects.values_list("ip"):
-                
-
-
         if not privatekey:
             privatekey = wgcmd.genkey()
             publickey = wgcmd.pubkey(privatekey)
         else:
             publickey = wgcmd.pubkey(privatekey)
 
+        if not listenport:
+            ServerWg.objects.get()
 
 
         try:
@@ -103,10 +107,3 @@ class WgClientConfig(View):
         return res(config)
 
 
-
-
-from threading import Thread
-
-print("启动server ")
-th = Thread(target=startserver, daemon=True)
-th.start()

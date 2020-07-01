@@ -19,7 +19,7 @@ class Networks(models.Model):
 
 class ServerWg(models.Model):
     ifname = models.CharField(max_length=64, unique=True)
-    ip = models.CharField(max_length=64, unique=True)
+    net = models.CharField(max_length=64, unique=True)
     privatekey = models.CharField(max_length=64)
     publickey = models.CharField(max_length=64)
     listenport = models.IntegerField(blank=True, null=True, unique=True)

@@ -1,3 +1,4 @@
+from django import apps
 from django.apps import AppConfig
 from django.db.models.signals import post_migrate
 
@@ -6,14 +7,16 @@ DEFAULT_USER = "easywg"
 
 def init_db(sender, **kwargs):
     from django.contrib.auth.models import User
+    from libwg import wgcmd
     #if sender == 'User.__name__':
     #    print("sender: ", sender)
 
-    print("创建默认 superuser")
     if not User.objects.filter(username=DEFAULT_USER):
+        print("创建默认 superuser")
         easywg = User.objects.create_superuser(username=DEFAULT_USER, password=DEFAULT_USER)
         easywg.save()
-
+    
+    wgcmd.startserver()
 
 
     #if User.objects.exists():
@@ -28,10 +31,9 @@ def init_db(sender, **kwargs):
 class WgConfig(AppConfig):
     name = 'wg'
 
+    boot = False
+
     def ready(self):
-        """
-        
-        """
 
         print("执行 wg.apps.WgConfig.ready()")
 
