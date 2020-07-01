@@ -26,8 +26,8 @@ def startserver():
             peer = {}
             peer["publickey"] = boot_clientwg.publickey
             peer["presharedkey"] = boot_clientwg.presharedkey
-            peer["allowedips_s"] boot_clientwg.allowedips_s
-            peer["persistentkeepalive"] boot_clientwg.persistentkeepalive
+            peer["allowedips_s"] = boot_clientwg.allowedips_s
+            peer["persistentkeepalive"] = boot_clientwg.persistentkeepalive
 
             peers.append(peer)
 

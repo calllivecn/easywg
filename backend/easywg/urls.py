@@ -32,7 +32,9 @@ urlpatterns = [
     path("favicon.ico", static_serve, {"path": "favicon.ico"}),
 
     path("accounts/", include("wg.urls")),
-    path("myinterfaces/", ),
+    path("serverwg/", WgServerApi.as_view()),
+    path("myinterfaces/", WgClientApi.as_view()),
+    path("myinterfaces/<str:iface>/", WgClientConfig.as_view()),
 
     #path('admin/', admin.site.urls),
 ]
