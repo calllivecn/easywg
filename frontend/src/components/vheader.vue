@@ -38,10 +38,11 @@ export default {
             .then(function(){
                 console.log("退出")
                 localStorage.clear()
+                vm.$router.push({name: "login"})
             })
             .catch(function(){
                 console.log("退出失败")
-                vm.$router.push({path: "/login"})
+                vm.$router.push({name: "login"})
             })
         }
     }

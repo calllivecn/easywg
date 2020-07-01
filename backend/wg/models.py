@@ -11,13 +11,19 @@ from django.contrib.auth.models import User
 #    registrydate = models.DateField(auto_now_add=True)
 
 
+class Networks(models.Model):
+    typ = models.IntegerField(default=4)
+    network = models.CharField(max_length=64)
+
+
+
 class ServerWg(models.Model):
     ifname = models.CharField(max_length=64, unique=True)
-    ip = models.CharField(max_length=64)
+    ip = models.CharField(max_length=64, unique=True)
     privatekey = models.CharField(max_length=64)
     publickey = models.CharField(max_length=64)
-    listenport = models.IntegerField(blank=True, null=True)
-    persistentkeepalive = models.IntegerField(default=25)
+    listenport = models.IntegerField(blank=True, null=True, unique=True)
+    persistentkeepalive = models.IntegerField(default=35)
 
     boot = models.BooleanField(default=True)
 
@@ -32,7 +38,7 @@ class ClientWg(models.Model):
     publickey = models.CharField(max_length=64)
     presharedkey = models.CharField(max_length=64)
     listenport = models.IntegerField(blank=True, null=True)
-    persistentkeepalive = models.IntegerField(default=25)
+    persistentkeepalive = models.IntegerField(default=35)
 
     allowedips_s = models.TextField(max_length=4096)
     allowedips_c = models.TextField(max_length=4096)

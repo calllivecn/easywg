@@ -5,6 +5,15 @@ from subprocess import run, PIPE
 from nftables import Nftables
 from pyroute2 import IPDB, NDB, WireGuard
 
+DEFAULT_NETWORK = "10.0.0.0/8"
+
+def get_subnet(exists_nets, network=DEFAULT_NETWORK):
+    """
+    exists_nets: list() or tuple()
+    """
+    
+    return 
+
 
 def genkey():
     p = run("wg genkey".split(), stdout=PIPE, text=True)
