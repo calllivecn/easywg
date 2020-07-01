@@ -19,7 +19,7 @@ from django.views.static import serve
 
 
 from easywg import settings
-from wg.views import WgServerApi, WgClientApi
+from wg.views import WgServerApi, WgClientApi, WgClientConfig
 
 def static_serve(request, path):
     return serve(request, path, document_root=settings.WEB_ROOT)
