@@ -7,7 +7,7 @@ DEFAULT_USER = "easywg"
 
 def init_db(sender, **kwargs):
     from django.contrib.auth.models import User
-    from libwg import wgcmd
+    from wg import startwg
     #if sender == 'User.__name__':
     #    print("sender: ", sender)
 
@@ -16,7 +16,8 @@ def init_db(sender, **kwargs):
         easywg = User.objects.create_superuser(username=DEFAULT_USER, password=DEFAULT_USER)
         easywg.save()
     
-    wgcmd.startserver()
+    print("执行 startserver()")
+    startwg.startserver()
 
 
     #if User.objects.exists():
