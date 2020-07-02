@@ -18,7 +18,7 @@ class Networks(models.Model):
 
 
 class ServerWg(models.Model):
-    ifname = models.CharField(max_length=64, unique=True)
+    iface = models.CharField(max_length=64, unique=True)
     net = models.CharField(max_length=64, unique=True)
     privatekey = models.CharField(max_length=64)
     publickey = models.CharField(max_length=64)
@@ -33,7 +33,7 @@ class ClientWg(models.Model):
     server = models.ForeignKey(ServerWg, on_delete=models.CASCADE)
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     ip = models.CharField(max_length=64)
-    ifname = models.CharField(max_length=64, unique=True)
+    iface = models.CharField(max_length=64, unique=True)
     privatekey = models.CharField(max_length=64)
     publickey = models.CharField(max_length=64)
     presharedkey = models.CharField(max_length=64)
