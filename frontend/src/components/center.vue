@@ -11,7 +11,7 @@
       <header class="something">{{ msg }}</header>
       <table v-if="WG == 'C'">
         <tr><th>接口名</th><th>启用的网络</th><th>描述</th><th>conf配置</th></tr>
-        <tr v-for="iface in ifaces" v-if="ifaces.length > 0">
+        <tr v-for="iface in data" v-if="data.length > 0">
           <td>{{ iface.name }}</td>
           <td>Allowed-ips: {{ iface.allowedips }}</td>
           <td>{{ iface.comment }}</td>
@@ -20,12 +20,21 @@
       </table>
 
       <table v-if="this.WG == 'S'">
-        <tr><th>Server 接口</th><th>启用的网络</th><th></th><th>描述</th><th>conf配置</th></tr>
-        <tr v-for="iface in ifaces" v-if="ifaces.length > 0">
-          <td>{{ iface.name }}</td>
-          <td>{{ iface.allowedips }}</td>
+        <tr>
+          <th>Server 接口</th>
+          <th>网络和地址</th>
+          <th>公钥</th>
+          <th>自启动</th>
+          <th>描述</th>
+          <th>配置</th>
+        </tr>
+        <tr v-for="iface in data" v-if="data.length > 0">
+          <td>{{ iface.iface }}</td>
+          <td>{{ iface.net }}</td>
+          <td>{{ iface.publickey }}</td>
+          <td>{{ iface.boot }}</td>
           <td>{{ iface.comment }}</td>
-          <td v-on:click="configS(iface.name)">修改配置</td>
+          <td v-on:click="configS(iface.name)">配置</td>
         </tr>
       </table>
     </div>
@@ -39,9 +48,9 @@ export default {
   name: "center",
     data: function(){
         return {
-            msg: '连接信息',
+            msg: '',
             superuser: null,
-            ifaces: '',
+            data: '',
             WG: 'C',
         }
     },
@@ -51,9 +60,9 @@ export default {
         this.axios.get("/myinterfaces/")
         .then(function(res){
           if(res.data.code == 0){
-            vm.ifaces = res.data.data
+            vm.data = res.data.data
           }else{
-
+            console.log("Error:", res.data.msg)
           }
         })
     },
@@ -68,15 +77,17 @@ export default {
             this.axios.get("/serverwg/")
             .then(function(res){
                 if(res.data.code == 0){
-                  vm.ifaces = res.data.data
-                  vm.$Message.info("请求成功。")
+                  vm.data = res.data.data
+                  //vm.$Message.info("请求成功。")
+                  console.log("请求成功。")
                 }else{
-                  vm.$Message.info("接口出现问题。")
+                  //vm.$Message.info("接口出现问题。")
+                  console.log("接口出现问题:", res.data.msg)
                 }
             },
             function(res){
               console.log("服务器出错")
-              vm.$message("服务器出错")
+              //vm.$message("服务器出错")
             })
         },
         myinterfaces: function(){
@@ -88,7 +99,8 @@ export default {
               if(res.data.code == 0){
                 vm.ifaces = res.data.data
               }else{
-                vm.$Message.info("接口出现问题。")
+                //vm.$Message.info("接口出现问题。")
+                console.log("接口出现问题:", res.data.msg)
               }
             })
         },

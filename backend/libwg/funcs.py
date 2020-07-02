@@ -5,7 +5,7 @@ def json(j):
     return JsonResponse(j, json_dumps_params={"ensure_ascii": False, "indent": 4})
 
 def res(data):
-    j = []
+    j = {}
     j["code"] = 0
     j["msg"] ="ok"
     j["data"] = data

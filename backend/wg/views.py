@@ -27,49 +27,68 @@ class WgServerApi(View):
         return super().dispatch(request, *args, **kwargs)
 
     def get(self, request):
-        temp = ""
-        return render()
+        l = []
+        for queryset in ServerWg.objects.all():
+            i = {}
+
+            i["iface"] = queryset.iface
+            i["net"] = queryset.net
+            i["publickey"] = querset.publickey
+            i["persistentkeepalive"] = queryset.persistentkeepalive
+            i["boot"] = querset.boot
+            i["comment"] = querset.comment
+
+            l.append(i)
+
+        return funcs.res(l)
     
     def post(self, request):
         wg = request.META["WG_BODY"]
 
-        iface = wg.get("iface")
+        i = {}
+
+        if not wg.get("iface"):
+            suffix = ServerWg.objects.aggregate(Max("id")).get("id__max")
+            if suffix is None:
+                i["iface"] = "easywg0"
+            else:
+                i["iface"] = "easywg" + str(suffix + 1)
+
         net = wg.get("net")
-
         if net is None:
-            return reserr("network 是必须的", -1)
+            return funcs.reserr("network 是必须的")
         else:
-            if ServerWg.objects.get(net=net).exists():
-                return reserr(f"network {net} 冲突！", -1)
-
-        privatekey = wg.get("privatekey")
-        #publickey = 
-        listenport = wg.get("listenport")
-        persistentkeepalive = wg.get("persistentkeepalive", 35)
-
-        boot = wg.get("boot", True)
-        comment = wg.get("comment")
+            if ServerWg.objects.filter(net=net):
+                return funcs.reserr(f"network {net} 冲突！")
+            else:
+                i["net"] = net
         
-
-        if not iface:
-            iface = "easywg"
-        
-        if not privatekey:
-            privatekey = wgcmd.genkey()
-            publickey = wgcmd.pubkey(privatekey)
+        if not wg.get("privatekey"):
+            i["privatekey"] = wgcmd.genkey()
+            i["publickey"] = wgcmd.pubkey(i["privatekey"])
         else:
-            publickey = wgcmd.pubkey(privatekey)
+            i["publickey"] = wgcmd.pubkey(i["privatekey"])
 
-        if not listenport:
-            ServerWg.objects.get()
+        i["persistentkeepalive"] = wg.get("persistentkeepalive", 35)
+        i["boot"] = wg.get("boot", True)
+        i["comment"] = wg.get("comment")
+        
+        lp = wg.get("listenport")
+        if lp:
+            if ServerWg.objects.filter(listenport=lp):
+                return funcs.reserr(f"listenport {lp} 冲突")
+        else:
+            lp = ServerWg.objects.aggregate(Max("listenport")).get("listenport__max")
+            if lp is None:
+                i["listenport"] = 8324
+            else:
+                i["listenport"] = lp + 1
 
 
-        try:
-            wg[""]
-        except Exception:
-            return reserr("ifname, privatekey, ip, ")
+        wgservser = ServerWg(**i)
+        wgserver.save()
 
-        models.ServerWg.objects.create(ifname="")
+        return funcs.res(i)
 
 
 
