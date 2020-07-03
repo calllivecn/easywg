@@ -58,18 +58,18 @@ set_wg(){
 
 vpn(){
 	if [ "$1"x = "up"x ];then
-		wg set "${EASYWG}" fwmark "$fwmark"
+		wg set "${EASYWG}" fwmark "$FWMARK"
 	
-		ip route add default dev ${EASYWG} table "$route_table_id"
+		ip route add default dev ${EASYWG} table "$ROUTE_TABLE_ID"
 	
-		ip rule add not fwmark "$fwmark" table "$route_table_id"
+		ip rule add not fwmark "$FWMARK" table "$ROUTE_TABLE_ID"
 	
 		ip rule add table main suppress_prefixlength 0
 	
 	elif [ "$1"x = "down"x ];then
-		ip route del default dev ${EASYWG} table "$route_table_id"
+		ip route del default dev ${EASYWG} table "$ROUTE_TABLE_ID"
 
-		ip rule del not from all fwmark ${fwmark}
+		ip rule del not from all fwmark ${FWMARK}
 
 		ip rule del table main suppress_prefixlength 0
 	fi
@@ -78,9 +78,13 @@ vpn(){
 
 main(){
 	if [ "$1" = "up" ] && [ "$2" = "vpn" ];then
-		add_wg
-		set_wg
-		vpn "up"
+		if check_wg_exists "${EASYWG}";then
+			vpn "up"
+		else
+			add_wg
+			set_wg
+			vpn "up"
+		fi
 	elif [ "$1" = "down" ] && [ "$2" = "vpn" ];then
 
 		if check_wg_exists "${EASYWG}";then
@@ -90,8 +94,7 @@ main(){
 		fi
 
 	elif [ "$1" = "down" ];then
-		del_wg >/dev/null 2>&1
-		vpn "down"
+		del_wg
 
 	elif [ "$1" = "up" ] || [ -z "$1" ];then
 		add_wg
