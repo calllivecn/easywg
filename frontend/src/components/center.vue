@@ -102,7 +102,7 @@ export default {
 
 #context {
   display: inline;
-  width: 80%;
+  /* width: 80%; */
 }
 
 .something {
