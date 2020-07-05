@@ -152,8 +152,8 @@ class WgClientConfig(View):
         iface = request.GET.get("iface")
         user = request.user
 
-        config = models.ClientWg.objects.get(user=user, ifname=iface)
+        config = ClientWg.objects.get(user=user, ifname=iface)
 
-        return res(config)
+        return funcs.res(config)
 
 
