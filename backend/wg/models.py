@@ -22,7 +22,7 @@ class ServerWg(models.Model):
     net = models.CharField(max_length=64, unique=True)
     privatekey = models.CharField(max_length=64)
     publickey = models.CharField(max_length=64)
-    listenport = models.IntegerField(blank=True, null=True, unique=True)
+    listenport = models.IntegerField(unique=True)
     persistentkeepalive = models.IntegerField(default=35)
 
     boot = models.BooleanField(default=True)

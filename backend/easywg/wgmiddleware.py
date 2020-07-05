@@ -6,12 +6,19 @@ class Body2Json:
         self.get_response = get_response
 
     def __call__(self, request):
-
+        wg_body = {}
+        body = {}
         try:
-            request.META["WG_BODY"] = json.loads(request.body)
+           body = json.loads(request.body)
         except Exception:
             pass
-        
+
+        for k, v in body.items():
+            if v is not None:
+                wg_body[k] = v
+
+        request.META["WG_BODY"] = wg_body
+
         response = self.get_response(request)
 
         return response

@@ -1,3 +1,4 @@
+import os
 import socket
 import ipaddress
 from subprocess import run, PIPE
@@ -17,15 +18,15 @@ def get_subnet(exists_nets, network=DEFAULT_NETWORK):
 
 def genkey():
     p = run("wg genkey".split(), stdout=PIPE, text=True)
-    return p.stdout
+    return p.stdout.rstrip(os.linesep)
 
 def pubkey(private_key):
     p = run("wg pubkey".split(), input=private_key, stdout=PIPE, text=True)
-    return p.stdout
+    return p.stdout.rstrip(os.linesep)
 
 def genpsk():
     p = run("wg genpsk".split(), stdout=PIPE, text=True)
-    return p.stdout
+    return p.stdout.rstrip(os.linesep)
 
 def add_wg(ifname, ip):
 

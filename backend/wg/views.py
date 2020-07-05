@@ -1,4 +1,3 @@
-from django.shortcuts import render
 from django.contrib.auth import authenticate
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.csrf import csrf_exempt
@@ -27,21 +26,36 @@ class WgServerApi(View):
         return super().dispatch(request, *args, **kwargs)
 
     def get(self, request):
-        l = []
-        for queryset in ServerWg.objects.all():
-            i = {}
+        if request.GET.get("iface") is None:
+            l = []
+            for queryset in ServerWg.objects.all():
+                i = {}
 
-            i["iface"] = queryset.iface
-            i["net"] = queryset.net
-            i["publickey"] = querset.publickey
-            i["persistentkeepalive"] = queryset.persistentkeepalive
-            i["boot"] = querset.boot
-            i["comment"] = querset.comment
+                i["iface"] = queryset.iface
+                i["net"] = queryset.net
+                i["publickey"] = queryset.publickey
+                i["persistentkeepalive"] = queryset.persistentkeepalive
+                i["boot"] = queryset.boot
+                i["comment"] = queryset.comment
 
-            l.append(i)
+                l.append(i)
 
-        return funcs.res(l)
-    
+            return funcs.res(l)
+        else:
+            iface = ServerWg.objects.get(iface=request.GET.get("iface"))
+
+            iface_j = {
+                "iface": iface.iface,
+                "net": iface.net,
+                "privatekey": iface.privatekey,
+                "listenport": iface.listenport,
+                "persistentkeepalive": iface.persistentkeepalive,
+                "boot": iface.boot,
+                "comment": iface.comment
+            }
+
+            return funcs.res(iface_j)
+
     def post(self, request):
         wg = request.META["WG_BODY"]
 
@@ -59,7 +73,7 @@ class WgServerApi(View):
             return funcs.reserr("network 是必须的")
         else:
             if ServerWg.objects.filter(net=net):
-                return funcs.reserr(f"network {net} 冲突！")
+                return funcs.reserr(f"network {net} 已存在！")
             else:
                 i["net"] = net
         
@@ -71,7 +85,7 @@ class WgServerApi(View):
 
         i["persistentkeepalive"] = wg.get("persistentkeepalive", 35)
         i["boot"] = wg.get("boot", True)
-        i["comment"] = wg.get("comment")
+        i["comment"] = wg.get("comment", "")
         
         lp = wg.get("listenport")
         if lp:
@@ -85,12 +99,29 @@ class WgServerApi(View):
                 i["listenport"] = lp + 1
 
 
+        print("添加一个接口：", i)
         wgservser = ServerWg(**i)
-        wgserver.save()
+        wgservser.save()
 
         return funcs.res(i)
 
+    def put(self, request):
+        pass
 
+    def delete(self, request):
+
+        iface = request.META["WG_BODY"].get("iface")
+
+        if iface is None:
+            return funcs.reserr("删除server接口需要接口名")
+        
+        try:
+            iface_model = ServerWg.objects.get(iface=iface)
+        except ServerWg.DoesNotExist:
+            return funcs.reserr(f"没有 {iface} server 接口")
+
+        iface_model.delete()
+        return funcs.resok()
 
 class WgClientApi(View):
 
