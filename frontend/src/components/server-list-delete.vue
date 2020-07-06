@@ -59,15 +59,13 @@ export default {
     methods:{
         serveradd: function(){
             console.log("server 添加")
-            this.$emit('server-list')
+            this.$emit('server-add')
         },
         change:function(iface){
             console.log("server 修改: ", iface)
             var vm = this
 
-            this.axios.get("/serverwg/", {
-               "iface": iface
-            })
+            this.axios.get("/serverwg/", {params: {"iface": iface}})
             .then(function(res){
                 if(res.data.code == 0){
                     vm.$emit("server-change", res.data.data)

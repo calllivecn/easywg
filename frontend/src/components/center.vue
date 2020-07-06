@@ -10,7 +10,7 @@
         <div id="context" class="show something">
 
             <server-list-delete v-if="WG == 'S_LIST'" v-on:server-list="serverwg" v-on:server-add="serveradd" v-on:server-change="serverchange"></server-list-delete>
-            <server-change-add v-if="WG == 'S_CHANGE'" v-bind:ifaceinfo="ifaceinfo"></server-change-add>
+            <server-change-add v-if="WG == 'S_CHANGE'" v-on:server-list="serverwg" v-bind:ifaceinfo="ifaceinfo"></server-change-add>
             
 
             <table v-if="WG == 'C_LIST'">
@@ -41,7 +41,6 @@ export default {
             superuser: null,
             data: '',
             WG: 'C_LIST',
-            ifaceinfo: ['ifaceinfo'],
         }
     },
     components:{
@@ -102,7 +101,7 @@ export default {
 
 #context {
   display: inline;
-  /* width: 80%; */
+  width: 80%;
 }
 
 .something {

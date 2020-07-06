@@ -26,7 +26,8 @@ class WgServerApi(View):
         return super().dispatch(request, *args, **kwargs)
 
     def get(self, request):
-        if request.GET.get("iface") is None:
+        iface = request.GET.get("iface")
+        if iface is None:
             l = []
             for queryset in ServerWg.objects.all():
                 i = {}
@@ -42,7 +43,11 @@ class WgServerApi(View):
 
             return funcs.res(l)
         else:
-            iface = ServerWg.objects.get(iface=request.GET.get("iface"))
+            #print(f"查{iface}接口信息.")
+            try:
+                iface = ServerWg.objects.get(iface=iface)
+            except ServerWg.DoesNotExist:
+                return funcs.reserr(f"没有{iface}接口")
 
             iface_j = {
                 "iface": iface.iface,
