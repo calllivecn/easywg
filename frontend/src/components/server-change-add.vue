@@ -2,32 +2,32 @@
     <div>
         <p>{{prompt}}</p>
 
-        <span>接口名：</span><input v-model="iface" placeholder="使用默认接口名">
+        <span>接口名：</span><input v-model="iface.iface" placeholder="使用默认接口名">
         <br>
 
-        <span>network: </span><input v-model="net" type="text" placeholder="请输入接口使用的网络地址">
+        <span>network: </span><input v-model="iface.net" type="text" placeholder="请输入接口使用的网络地址">
         <br>
 
         <span>privatekey: </span>
-        <input v-model="privatekey" v-bind:type="showprivatekey" placeholder="请输入接口使用的网络地址">
+        <input v-model="iface.privatekey" v-bind:type="showprivatekey" placeholder="请输入接口使用的网络地址">
         <button v-on:click="changeprivatekey">显示私钥</button>
         <br>
 
-        <span>publickey: </span><input v-model="publickey" type="text" placeholder="一般不用输入">
+        <span>publickey: </span><input v-model="iface.publickey" type="text" placeholder="一般不用输入">
         <br>
 
-        <span>listenport: </span><input v-model="listenport" type="text" placeholder="接口端口">
+        <span>listenport: </span><input v-model="iface.listenport" type="text" placeholder="接口端口">
         <br>
 
-        <span>心跳时间: </span><input v-model="persistentkeepalive" type="text" placeholder="35">
+        <span>心跳时间: </span><input v-model="iface.persistentkeepalive" type="text" placeholder="35">
         <br>
 
-        <span>是否开机启动: </span><input v-model="boot" type="checkbox">
-        <span>{{boot}}</span>
+        <span>是否开机启动: </span><input v-model="iface.boot" type="checkbox">
+        <span>{{iface.boot}}</span>
         <br>
 
         <span>描述：</span>
-        <textarea v-model="comment" placeholder="添加一个简短的描述"></textarea>
+        <textarea v-model="iface.comment" placeholder="添加一个简短的描述"></textarea>
         <br>
         <button @click="submit">添加接口</button>
     </div>
@@ -37,11 +37,13 @@
 <script>
 export default {
     name: "server-change-add",
+    props: ['ifaceinfo'],
     data: function(){
         return {
             prompt: "",
             showprivatekey: "password",
-            iface: null,
+            iface: {},
+            /*
             net: null,
             privatekey: null,
             publickey: null,
@@ -49,7 +51,19 @@ export default {
             persistentkeepalive: 35,
             boot: true,
             comment: null,
+            */
         }
+    },
+    mounted:function(){
+        //console.log("ifaceinfo: ", this.ifaceinfo)
+        this.iface = this.ifaceinfo
+        /*
+        this.net = this.ifaceinfo.net
+        this.privatekey = this.ifaceinfo.privatekey
+        this.publickey = this.ifaceinfo.publickey
+        this.listenport = this.ifaceinfo.listenport
+        this.persistentkeepalive = this.ifaceinfo.persistentkeepalive
+        */
     },
     methods:{
         changeprivatekey: function(){
