@@ -73,7 +73,7 @@ def serverwg_add(wg):
 
 
 
-def serverwg_modify(wg):
+def serverwg_change(wg):
 
     iface_id = wg.get("id")
 

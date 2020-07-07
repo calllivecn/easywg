@@ -26,6 +26,7 @@
 </template>
 
 <script>
+import eventbus from '../js/eventbus.js'
 export default {
     name: "client-list-delete",
     data: function(){
