@@ -17,15 +17,15 @@ def get_subnet(exists_nets, network=DEFAULT_NETWORK):
 
 
 def genkey():
-    p = run("wg genkey".split(), stdout=PIPE, text=True)
+    p = run("wg genkey".split(), stdout=PIPE, text=True, check=True)
     return p.stdout.rstrip(os.linesep)
 
 def pubkey(private_key):
-    p = run("wg pubkey".split(), input=private_key, stdout=PIPE, text=True)
+    p = run("wg pubkey".split(), input=private_key, stdout=PIPE, text=True, check=True)
     return p.stdout.rstrip(os.linesep)
 
 def genpsk():
-    p = run("wg genpsk".split(), stdout=PIPE, text=True)
+    p = run("wg genpsk".split(), stdout=PIPE, text=True, check=True)
     return p.stdout.rstrip(os.linesep)
 
 def add_wg(ifname, ip):
