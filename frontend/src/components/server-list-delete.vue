@@ -2,7 +2,7 @@
     <div>
         <header>Server 接口信息</header>
         <p>{{ prompt }}</p>
-        <button v-on:click="serveradd">添加</button>
+        <button v-on:click="add">添加</button>
             
         <table>
             <tr>
@@ -28,7 +28,7 @@
 
 
 <script>
-import eventbus from '../js/eventbus.js'
+import {eventbus} from '../js/eventbus.js'
 
 export default {
     name: "server-list-delete",
@@ -61,9 +61,9 @@ export default {
         })
     },
     methods:{
-        serveradd: function(){
+        add: function(){
             console.log("server 添加")
-            this.$emit('server-add')
+            eventbus.$emit('event-change', 'server-change-add')
         },
         change:function(iface){
             console.log("server 修改: ", iface)

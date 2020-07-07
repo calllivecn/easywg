@@ -1,3 +1,3 @@
 import Vue from 'vue'
 
-export const eventbus =new Vue()
+export const eventbus = new Vue()
