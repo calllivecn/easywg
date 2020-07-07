@@ -4,6 +4,8 @@ import Vue from 'vue'
 import App from './App'
 import router from './router'
 
+// myfunction
+import funcs from './js/funcs.js'
 
 // 第一种方式
 //import axios from 'axios'
@@ -15,7 +17,9 @@ import axios from 'axios'
 axios.defaults.xsrfCookieName = 'csrftoken'
 axios.defaults.xsrfHeaderName = 'X-CSRFToken'
 
+
 Vue.prototype.axios = axios 
+Vue.prototype.funcs = funcs
 
 Vue.config.productionTip = false
 

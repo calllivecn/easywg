@@ -16,3 +16,41 @@ def resok(msg="ok"):
 
 def reserr(msg, code=-1):
     return json({"code": code, "msg": msg})
+
+
+
+def serverwg2json(iface):
+    """
+    iface: ServerWg.objects.get()
+    """
+    iface_json = {
+              "id": iface.id,
+              "iface": iface.iface,
+              "net": iface.net,
+              "privatekey": iface.privatekey,
+              "publickey": iface.publickey,
+              "listenport": iface.listenport,
+              "persistentkeepalive": iface.persistentkeepalive,
+              "boot": iface.boot,
+              "comment": iface.comment
+          }
+
+    return iface_json
+
+
+def clientwg2json(iface):
+    """
+    iface: ClientWg.objects.get()
+    """
+    iface_json = {
+              "id": iface.id,
+              "iface": iface.iface,
+              "net": iface.net,
+              "privatekey": iface.privatekey,
+              "publickey": iface.publickey,
+              "listenport": iface.listenport,
+              "persistentkeepalive": iface.persistentkeepalive,
+              "boot": iface.boot,
+              "comment": iface.comment
+          }
+    return iface_json

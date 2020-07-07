@@ -37,9 +37,12 @@ export default {
             data: [],
         }
     },
+    created: function(){
+        console.log("server-list-delte created")
+    },
     mounted: function(){
+        console.log("server-list-delte mounted")
         var vm = this
-
         this.axios.get("/serverwg/")
         .then(function(res){
             if(res.data.code == 0){
@@ -77,6 +80,7 @@ export default {
         },
         remove: function(iface){
             var vm = this
+            var iface_remove = iface
 
             this.axios.delete("/serverwg/", {data:{
                     "iface": iface
@@ -84,12 +88,20 @@ export default {
             })
             .then(function(res){
                 if(res.data.code == 0){
-                    log = "成功删除接口： " + iface
-                    vm.prompt = log
+                    let log = "成功删除接口： " + iface_remove
                     console.log(log)
+                    for(const i in vm.data){
+                        if(vm.data[i].iface == iface_remove){
+                            vm.data.splice(i, 1)
+                        }
+                    }
+                    vm.prompt = log
                 }else{
                     vm.prompt = res.data.msg
                 }
+            },
+            function(res){
+                vm.prompt = res.data.msg
             })
         }
     }

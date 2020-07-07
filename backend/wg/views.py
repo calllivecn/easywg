@@ -3,10 +3,10 @@ from django.contrib.auth.decorators import login_required
 from django.views.decorators.csrf import csrf_exempt
 from django.views import View
 from django.http import HttpRequest, JsonResponse
-from django.db.models import Max
 
 
 from libwg import funcs, wgcmd
+from wg import wgop
 from wg.models import ServerWg, ClientWg
 from wg.startwg import startserver, stopserver
 
@@ -30,16 +30,7 @@ class WgServerApi(View):
         if iface is None:
             l = []
             for queryset in ServerWg.objects.all():
-                i = {}
-
-                i["iface"] = queryset.iface
-                i["net"] = queryset.net
-                i["publickey"] = queryset.publickey
-                i["persistentkeepalive"] = queryset.persistentkeepalive
-                i["boot"] = queryset.boot
-                i["comment"] = queryset.comment
-
-                l.append(i)
+                l.append(funcs.serverwg2json(queryset))
 
             return funcs.res(l)
         else:
@@ -49,69 +40,15 @@ class WgServerApi(View):
             except ServerWg.DoesNotExist:
                 return funcs.reserr(f"没有{iface}接口")
 
-            iface_j = {
-                "iface": iface.iface,
-                "net": iface.net,
-                "privatekey": iface.privatekey,
-                "listenport": iface.listenport,
-                "persistentkeepalive": iface.persistentkeepalive,
-                "boot": iface.boot,
-                "comment": iface.comment
-            }
-
-            return funcs.res(iface_j)
+            return funcs.res(funcs.serverwg2json(iface))
 
     def post(self, request):
         wg = request.META["WG_BODY"]
-
-        i = {}
-
-        if not wg.get("iface"):
-            suffix = ServerWg.objects.aggregate(Max("id")).get("id__max")
-            if suffix is None:
-                i["iface"] = "easywg0"
-            else:
-                i["iface"] = "easywg" + str(suffix + 1)
-
-        net = wg.get("net")
-        if net is None:
-            return funcs.reserr("network 是必须的")
-        else:
-            if ServerWg.objects.filter(net=net):
-                return funcs.reserr(f"network {net} 已存在！")
-            else:
-                i["net"] = net
-        
-        if not wg.get("privatekey"):
-            i["privatekey"] = wgcmd.genkey()
-            i["publickey"] = wgcmd.pubkey(i["privatekey"])
-        else:
-            i["publickey"] = wgcmd.pubkey(i["privatekey"])
-
-        i["persistentkeepalive"] = wg.get("persistentkeepalive", 35)
-        i["boot"] = wg.get("boot", True)
-        i["comment"] = wg.get("comment", "")
-        
-        lp = wg.get("listenport")
-        if lp:
-            if ServerWg.objects.filter(listenport=lp):
-                return funcs.reserr(f"listenport {lp} 冲突")
-        else:
-            lp = ServerWg.objects.aggregate(Max("listenport")).get("listenport__max")
-            if lp is None:
-                i["listenport"] = 8324
-            else:
-                i["listenport"] = lp + 1
-
-
-        print("添加一个接口：", i)
-        wgservser = ServerWg(**i)
-        wgservser.save()
-
-        return funcs.res(i)
+        return wgop.serverwg_add(wg) 
 
     def put(self, request):
-        pass
+        wg = request.META["WG_BODY"]
+        return wgop.serverwg_modify(wg)
 
     def delete(self, request):
 

@@ -1,29 +1,19 @@
 <template>
     <div id="center" class="show">
 
-        <div id="leftmenu" class="show" v-if="superuser">
-            <label v-on:click="myinterfaces"><u>My WireGuard</u></label>
+        <div id="leftmenu" class="show" >
+            <label v-if="superuser" v-on:click="serverwg"><u>Server WireGuard</u></label>
             <br>
-            <label v-on:click="serverwg"><u>Server WireGuard</u></label>
+            <label v-on:click="myinterfaces"><u>My Peer WireGuard</u></label>
         </div>
 
         <div id="context" class="show something">
 
             <server-list-delete v-if="WG == 'S_LIST'" v-on:server-list="serverwg" v-on:server-add="serveradd" v-on:server-change="serverchange"></server-list-delete>
             <server-change-add v-if="WG == 'S_CHANGE'" v-on:server-list="serverwg" v-bind:ifaceinfo="ifaceinfo"></server-change-add>
-            
 
-            <table v-if="WG == 'C_LIST'">
-                <tr><th>接口名</th><th>启用的网络</th><th>描述</th><th>conf配置</th></tr>
-
-                <tr v-for="iface in data" v-bind:key="iface.iface">
-                    <td>{{ iface.name }}</td>
-                    <td>Allowed-ips: {{ iface.allowedips }}</td>
-                    <td>{{ iface.comment }}</td>
-                    <td v-on:click="conf(iface.name)">下载配置</td>
-                </tr>
-            </table>
-
+            <client-list-delete v-if="WG == 'C_LIST'"></client-list-delete>
+            <client-change-add v-if="WG == 'C_CHANGE'"></client-change-add>
         </div>
 
     </div>
@@ -31,33 +21,31 @@
 
 
 <script>
-import server_change_add from '@/components/server-change-add'
 import server_list_delete from '@/components/server-list-delete'
+import server_change_add from '@/components/server-change-add'
+import client_list_delete from '@/components/client-list-delete'
+//import client_change_add from '@/components/client-change-add'
 
 export default {
     name: "center",
     data: function(){
         return {
             superuser: null,
-            data: '',
             WG: 'C_LIST',
         }
     },
     components:{
-        "server-change-add": server_change_add,
         "server-list-delete": server_list_delete,
+        "server-change-add": server_change_add,
+        "client-list-delete": client_list_delete,
+        //"client-change-add": client_change_add,
+    },
+    created: function(){
+        console.log("created")
     },
     mounted: function(){
-        var vm = this
+        console.log("mounted")
         this.superuser = sessionStorage.superuser
-        this.axios.get("/myinterfaces/")
-        .then(function(res){
-            if(res.data.code == 0){
-                vm.data = res.data.data
-            }else{
-                console.log("Error:", res.data.msg)
-            }
-        })
     },
     methods:{
         myinterfaces: function(){
@@ -65,9 +53,11 @@ export default {
         },
         serverwg: function(){
             this.WG = "S_LIST"
+            console.log("server-add")
         },
         serveradd: function(){
             this.WG = 'S_CHANGE'
+            this.ifaceinfo = 'S_ADD'
             console.log('父组件 server-add')
         },
         serverchange: function(ifaceinfo){
