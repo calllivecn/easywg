@@ -9,6 +9,8 @@
 
         <div id="context" class="show something">
 
+            <component v-bind:is="currentComponent"></component>
+
             <server-list-delete v-if="WG == 'S_LIST'" v-on:server-list="serverwg" v-on:server-add="serveradd" v-on:server-change="serverchange"></server-list-delete>
             <server-change-add v-if="WG == 'S_CHANGE'" v-on:server-list="serverwg" v-bind:ifaceinfo="ifaceinfo"></server-change-add>
 
@@ -21,6 +23,7 @@
 
 
 <script>
+import {eventbus} from '../js/eventbus.js'
 import server_list_delete from '@/components/server-list-delete'
 import server_change_add from '@/components/server-change-add'
 import client_list_delete from '@/components/client-list-delete'
@@ -32,6 +35,7 @@ export default {
         return {
             superuser: null,
             WG: 'C_LIST',
+            currentComponent: "server-list-delete",
         }
     },
     components:{
@@ -46,10 +50,14 @@ export default {
     mounted: function(){
         console.log("mounted")
         this.superuser = sessionStorage.superuser
+
+        eventbus.$on('event-chagne', function(event){
+            this.currentComponent = event
+        })
     },
     methods:{
         myinterfaces: function(){
-            this.WG = "C_LIST"
+            currentComponent = "client-list-delete"
         },
         serverwg: function(){
             this.WG = "S_LIST"

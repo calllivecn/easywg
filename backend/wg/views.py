@@ -48,7 +48,7 @@ class WgServerApi(View):
 
     def put(self, request):
         wg = request.META["WG_BODY"]
-        return wgop.serverwg_modify(wg)
+        return wgop.serverwg_change(wg)
 
     def delete(self, request):
 
