@@ -7,7 +7,9 @@
         <table>
             <tr>
               <th>Server 接口</th>
-              <th>网络和地址</th>
+              <th>Address</th>
+              <th>端口</th>
+              <th>网络地址</th>
               <th>公钥</th>
               <th>自启动</th>
               <th>描述</th>
@@ -15,7 +17,9 @@
             </tr>
             <tr v-for="iface in data" v-bind:key="iface.iface" >
               <td>{{ iface.iface }}</td>
-              <td>{{ iface.net }}</td>
+              <td>{{ iface.address}}</td>
+              <td>{{ iface.listenport }}</td>
+              <td>{{ iface.network }}</td>
               <td>{{ iface.publickey }}</td>
               <td>{{ iface.boot }}</td>
               <td>{{ iface.comment }}</td>
@@ -28,7 +32,7 @@
 
 
 <script>
-import {eventbus} from '../js/eventbus.js'
+import eventbus from '../js/eventbus.js'
 
 export default {
     name: "server-list-delete",
@@ -39,40 +43,52 @@ export default {
         }
     },
     created: function(){
-        console.log("server-list-delte created")
-    },
-    mounted: function(){
-        console.log("server-list-delte mounted")
         var vm = this
+
+        eventbus.$on('event-change', function(e){
+            vm.prompt = ""
+        })
+
+        eventbus.$on("server-change-data", function(iface){
+            for(let i in vm.data){
+                if(vm.data[i].id == iface.id){
+                    vm.data.splice(i, 1, iface)
+                    return
+                }
+            }
+            vm.data.push(iface)
+            vm.data.sort(function(a, b){return a.id - b.id})
+        })
+        
+        
         this.axios.get("/serverwg/")
         .then(function(res){
             if(res.data.code == 0){
               vm.data = res.data.data
-              //vm.$Message.info("请求成功。")
-              console.log("请求成功。")
             }else{
-              //vm.$Message.info("接口出现问题。")
-              console.log("接口出现问题:", res.data.msg)
+                vm.prompt = res.data.msg
             }
         },
         function(res){
-          console.log("服务器出错")
-          //vm.$message("服务器出错")
+          vm.prompt = "服务器出错！"
         })
+    },
+    mounted: function(){
     },
     methods:{
         add: function(){
-            console.log("server 添加")
             eventbus.$emit('event-change', 'server-change-add')
+            eventbus.$emit('server-change', null)
         },
-        change:function(iface){
+        change: function(iface){
             console.log("server 修改: ", iface)
             var vm = this
 
             this.axios.get("/serverwg/", {params: {"iface": iface}})
             .then(function(res){
                 if(res.data.code == 0){
-                    vm.$emit("server-change", res.data.data)
+                    eventbus.$emit("event-change", "server-change-add")
+                    eventbus.$emit("server-change", res.data.data)
                 }else{
                     vm.prompt = res.data.msg
                 }
@@ -102,7 +118,7 @@ export default {
                 }
             },
             function(res){
-                vm.prompt = res.data.msg
+                vm.prompt = "服务器出错！"
             })
         }
     }

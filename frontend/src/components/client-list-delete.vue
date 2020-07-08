@@ -35,8 +35,7 @@ export default {
             datas: [],
         }
     },
-    mounted: function(){
-        // this.funcs.myfunc() test ok
+    created: function(){
         var vm = this
         this.axios.get("/myinterfaces/")
         .then(function(res){
@@ -46,7 +45,7 @@ export default {
                 vm.prompt = res.data.msg
             }
         },function(res){
-            this.prompt = "服务器出错！"
+            vm.prompt = "服务器出错！"
         })
     },
     methods: {

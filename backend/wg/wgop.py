@@ -28,15 +28,20 @@ def serverwg_add(wg):
 
             i["iface"] = tmp
 
+    address = wg.get("address", "")
+    if address == "":
+        return funcs.reserr("address 是必须的")
+    else:
+        i["address"] = address
 
-    net = wg.get("net")
-    if net is None:
+    network = wg.get("network", "")
+    if network == "":
         return funcs.reserr("network 是必须的")
     else:
-        if ServerWg.objects.filter(net=net):
-            return funcs.reserr(f"network {net} 已存在！")
+        if ServerWg.objects.filter(network=network):
+            return funcs.reserr(f"network {network} 已存在！")
         else:
-            i["net"] = net
+            i["network"] = network
     
     prikey = wg.get("privatekey")
     if not prikey:
@@ -54,7 +59,7 @@ def serverwg_add(wg):
     i["boot"] = wg.get("boot", True)
     i["comment"] = wg.get("comment", "")
     
-    lp = wg.get("listenport")
+    lp = wg.get("listenport", "")
     if lp:
         if ServerWg.objects.filter(listenport=lp):
             return funcs.reserr(f"listenport {lp} 冲突")
@@ -67,8 +72,9 @@ def serverwg_add(wg):
 
 
     print("添加一个接口：", i)
-    wgservser = ServerWg(**i)
-    wgservser.save()
+    wgserver = ServerWg(**i)
+    wgserver.save()
+    i["id"] = wgserver.id
     return funcs.res(i)
 
 
@@ -82,23 +88,30 @@ def serverwg_change(wg):
     except ServerWg.DoesNotExist:
         return funcs.reserr("需要修改的接口不存在，请检查输入。")
     
-    iface_name = wg.get("iface")
-    if iface_name is None:
+    iface_name = wg.get("iface", "")
+    if iface_name == "":
         return funcs.reserr("需要修改的接口名不能为空")
     
     iface_old_name  = iface.iface
 
     iface.iface = iface_name
 
-    net = wg.get("net")
-    if net is None:
+
+    address = wg.get("address", "")
+    if address == "":
+        return funcs.reserr("address 是必须的")
+    else:
+        iface.address = address
+
+    network = wg.get("network", "")
+    if network == "":
         return funcs.reserr("network 是必须的")
 
     # 检查是否有其他接口使用了这个net
-    if ServerWg.objects.filter(net=net).exclude(iface=iface_old_name):
+    if ServerWg.objects.filter(network=network).exclude(iface=iface_old_name):
         return funcs.reserr("需要修改的网络已存在，请检查输入。")
 
-    iface.net = net
+    iface.network = network
 
     prikey = wg.get("privatekey")
     if prikey:
@@ -113,13 +126,18 @@ def serverwg_change(wg):
     iface.comment = wg.get("comment", "")
     
 
-    lp = wg.get("listenport")
+    lp = wg.get("listenport", "")
 
-    if lp is None:
+    if lp == "":
         lp_id = ServerWg.objects.aggregate(Max("listenport")).get("listenport__max")
         iface.listenport = lp_id + 1
 
     else:
+        try:
+            lp = int(lp)
+        except Exception:
+            return funcs.reserr("listenport 必须是 1 ~ 65535")
+
         if ServerWg.objects.filter(listenport=lp).exclude(iface=iface_old_name):
             return funcs.reserr(f"listenport: {lp} 已存在， 请检查输入。")
         else:
