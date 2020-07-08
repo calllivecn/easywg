@@ -64,6 +64,11 @@ def serverwg_add(wg):
         if ServerWg.objects.filter(listenport=lp):
             return funcs.reserr(f"listenport {lp} 冲突")
     else:
+        try:
+            lp = int(lp)
+        except Exception:
+            return funcs.reserr("listenport 必须是 1 ~ 65535")
+
         lp = ServerWg.objects.aggregate(Max("listenport")).get("listenport__max")
         if lp is None:
             i["listenport"] = 8324
