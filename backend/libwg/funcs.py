@@ -26,7 +26,9 @@ def serverwg2json(iface):
     iface_json = {
               "id": iface.id,
               "iface": iface.iface,
-              "net": iface.net,
+              "address": iface.address,
+              "listenport": iface.listenport,
+              "network": iface.network,
               "privatekey": iface.privatekey,
               "publickey": iface.publickey,
               "listenport": iface.listenport,

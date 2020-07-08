@@ -19,7 +19,8 @@ class Networks(models.Model):
 
 class ServerWg(models.Model):
     iface = models.CharField(max_length=64, unique=True)
-    net = models.CharField(max_length=64, unique=True)
+    address = models.CharField(max_length=64)
+    network = models.CharField(max_length=512, unique=True)
     privatekey = models.CharField(max_length=64)
     publickey = models.CharField(max_length=64)
     listenport = models.IntegerField(unique=True)
@@ -40,7 +41,7 @@ class ClientWg(models.Model):
     listenport = models.IntegerField(blank=True, null=True)
     persistentkeepalive = models.IntegerField(default=35)
 
-    allowedips_s = models.TextField(max_length=4096)
-    allowedips_c = models.TextField(max_length=4096)
+    allowedips_s = models.TextField(max_length=512)
+    allowedips_c = models.TextField(max_length=512)
 
     comment = models.TextField(max_length=128, blank=False, null=False)

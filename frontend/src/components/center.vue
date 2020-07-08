@@ -2,22 +2,19 @@
     <div id="center" class="show">
 
         <div id="leftmenu" class="show" >
-            <label v-if="superuser" v-on:click="serverwg"><u>Server WireGuard</u></label>
+            <label v-if="superuser" v-on:click="currentComponent = 'server-list-delete'"><u>Server WireGuard</u></label>
             <br>
-            <label v-on:click="myinterfaces"><u>My Peer WireGuard</u></label>
+            <label v-on:click="currentComponent = 'client-list-delete'"><u>My Peer WireGuard</u></label>
         </div>
 
         <div id="context" class="show something">
 
             <p>{{ currentComponent }}</p>
+            <keep-alive>
             <component v-bind:is="currentComponent"></component>
+            </keep-alive>
 
             <!--
-            <server-list-delete v-if="WG == 'S_LIST'" v-on:server-list="serverwg" v-on:server-add="serveradd" v-on:server-change="serverchange"></server-list-delete>
-            <server-change-add v-if="WG == 'S_CHANGE'" v-on:server-list="serverwg" v-bind:ifaceinfo="ifaceinfo"></server-change-add>
-
-            <client-list-delete v-if="WG == 'C_LIST'"></client-list-delete>
-            <client-change-add v-if="WG == 'C_CHANGE'"></client-change-add>
             -->
         </div>
 
@@ -26,7 +23,7 @@
 
 
 <script>
-import {eventbus} from '../js/eventbus.js'
+import eventbus from '../js/eventbus.js'
 import server_list_delete from '@/components/server-list-delete'
 import server_change_add from '@/components/server-change-add'
 import client_list_delete from '@/components/client-list-delete'
@@ -38,7 +35,7 @@ export default {
         return {
             superuser: null,
             WG: 'C_LIST',
-            currentComponent: "server-list-delete",
+            currentComponent: "client-list-delete",
         }
     },
     components:{
@@ -48,37 +45,18 @@ export default {
         //"client-change-add": client_change_add,
     },
     created: function(){
-        console.log("created")
-    },
-    mounted: function(){
-        console.log("mounted")
-        this.superuser = sessionStorage.superuser
-
+        // 根据事件动态渲染
         var vm = this
         eventbus.$on('event-change', function(event){
+            console.log("center.vue 接收事件：", event)
             vm.currentComponent = event
         })
     },
+    mounted: function(){
+        this.superuser = sessionStorage.superuser
+    },
     methods:{
-        myinterfaces: function(){
-            this.currentComponent = "client-list-delete"
-        },
-        serverwg: function(){
-            this.WG = "S_LIST"
-            console.log("server-add")
-        },
-        serveradd: function(){
-            this.WG = 'S_CHANGE'
-            this.ifaceinfo = 'S_ADD'
-            console.log('父组件 server-add')
-        },
-        serverchange: function(ifaceinfo){
-            this.WG = "S_CHANGE"
-            this.ifaceinfo = ifaceinfo
-            console.log('父组件 server-change')
-        },
-    }
-
+    },
 }
 </script>
 
