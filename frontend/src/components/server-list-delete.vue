@@ -6,25 +6,28 @@
             
         <table>
             <tr>
-              <th>Server 接口</th>
-              <th>Address</th>
-              <th>端口</th>
-              <th>网络地址</th>
-              <th>公钥</th>
-              <th>自启动</th>
-              <th>描述</th>
-              <th>配置</th>
+                <th>Server 接口</th>
+                <th>Address</th>
+                <th>端口</th>
+                <th>网络地址</th>
+                <th>公钥</th>
+                <th>自启动</th>
+                <th>描述</th>
+                <th>配置</th>
             </tr>
             <tr v-for="iface in data" v-bind:key="iface.iface" >
-              <td>{{ iface.iface }}</td>
-              <td>{{ iface.address}}</td>
-              <td>{{ iface.listenport }}</td>
-              <td>{{ iface.network }}</td>
-              <td>{{ iface.publickey }}</td>
-              <td>{{ iface.boot }}</td>
-              <td>{{ iface.comment }}</td>
-              <td v-on:click="change(iface.iface)">修改</td>
-              <td v-on:click="remove(iface.iface)">删除</td>
+                <td>{{ iface.iface }}</td>
+                <td>{{ iface.address}}</td>
+                <td>{{ iface.listenport }}</td>
+                <td>{{ iface.network }}</td>
+                <td>{{ iface.publickey }}</td>
+                <td>{{ iface.boot }}</td>
+                <td>{{ iface.comment }}</td>
+                <td>
+                    <span v-on:click="change(iface.iface)">修改</span>
+                    <span> - </span>
+                    <span v-on:click="remove(iface.iface)">删除</span>
+                </td>
             </tr>
         </table>
     </div>

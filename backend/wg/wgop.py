@@ -178,7 +178,7 @@ def clientwg_add(username, wg):
         try:
             serverid = int(serverid)
         except Exception:
-            return funcs.reserr("从属server接口是数据的")
+            return funcs.reserr("从属server接口是必须的")
 
         else:
             try:
@@ -194,18 +194,20 @@ def clientwg_add(username, wg):
             suffix = ClientWg.objects.aggregate(Max("id"), ).get("id__max")
             if suffix:
                 p = 1
-                tmp = "easywg" + str(suffix + p)
+                tmp = "wg" + str(suffix + p)
                 while ServerWg.objects.filter(iface=tmp):
                     p += 1
-                    tmp = "easywg" + str(suffix + p)
+                    tmp = "wg" + str(suffix + p)
                 client["iface"] = tmp
             else:
-                client["iface"] = "easywg0"
+                client["iface"] = "wg0"
         else:
-            if ClientWg.objects.filter(user=user, iface=iface):
+            if ClientWg.objects.filter(user=user_obj, iface=iface):
                 return funcs.reserr(f"{iface} 已存在！")
             else:
                 client["iface"] = iface
+        
+        #client["ip"] = 
         
         client["privatekey"] = wgcmd.genkey()
         client["publickey"] = wgcmd.pubkey(client["privatekey"])
@@ -214,9 +216,7 @@ def clientwg_add(username, wg):
         client["comment"] = wg.get("comment", "")
         clientwg = ClientWg(**client)
         clientwg.save()
-        client["id"] = clientwg.id
-
-        return funcs.res(funcs.clientwg2json(client))
+        return funcs.res(funcs.clientwg2json(clientwg))
 
 
 def clientwg_change(wg):
