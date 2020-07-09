@@ -7,7 +7,8 @@
 
             <div style="text-align: left;">
                 <label>Server: {{ data.serverwg }} </label>
-                <label>ip: {{ data.net }}</label>
+                <label>address: {{ data.address }}</label>
+                <label>network: {{ data.network }}</label>
                 <label>publickey: {{ data.publickey }}</label>
             </div>
             <table>
@@ -20,13 +21,17 @@
                     <th>CURD没有CR</th>
                 </tr>
 
-                <tr v-for="iface in data.ifaces" v-bind:key="data.ifaces.iface">
+                <tr v-for="iface in data.ifaces" v-bind:key="iface.iface">
                     <td>{{ iface.name }}</td>
                     <td>{{ iface.ip }}</td>
                     <td>{{ iface.allowedips }}</td>
                     <td>{{ iface.comment }}</td>
                     <td v-on:click="conf(iface.name)">下载配置</td>
-                    <td><span v-on:change="change">修改</span><span> - </span><span v-on:remove="remove">删除</span></td>
+                    <td>
+                        <span v-on:click="change(data.id, iface)">修改</span>
+                        <span> - </span>
+                        <span v-on:click="remove(data.id, iface.id)">删除</span>
+                    </td>
                 </tr>
             </table>
         </div>
@@ -50,15 +55,19 @@ export default {
             vm.prompt = ""
         })
 
-        eventbus.$on("client-change-data", function(iface){
-            for(let i in vm.datas){
-                if(vm.datas[i].id == iface.id){
-                    vm.data.splice(i, 1, iface)
-                    return
+        eventbus.$on("client-change-data", function(arg){
+
+            serverid = arg.serverid
+            iface = arg.iface
+
+
+            // add
+            for(server of this.datas){
+                if(serverid == server.id){
+                    server.push(iface)
+                    server.sort(function(a, b){return a.id - b.id})
                 }
             }
-            vm.data.push(iface)
-            vm.data.sort(function(a, b){return a.id - b.id})
         })
 
         //初始化 数据
@@ -78,14 +87,29 @@ export default {
             var vm = this 
             eventbus.$emit("event-change", "client-change-add")
         },
-        remove: function(){
+        remove: function(serverid, ifaceid){
+            console.log("删除ifaceid：",ifaceid)
+            for(let i in this.datas){
+
+                if(serverid == this.datas[i].id){
+
+                    for(let j in this.datas[i].ifaces){
+                        if(ifaceid == this.datas[i].ifaces[j].id){
+                            this.datas[i].ifaces.splice(j, 1)
+                            return
+                        }
+                    }
+                }
+            }
             
         },
         change: function(){
 
         },
-        conf: function(){
+        conf: function(ifacename){
             var vm = this
+            console.log("conf: ", ifacename)
+            return 
             this.axios.get("/client/conf/",{
                 params:{
                     "os": "",

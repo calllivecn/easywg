@@ -4,7 +4,7 @@ from django.contrib.auth.decorators import login_required
 from django.views.decorators.csrf import csrf_exempt
 from django.views import View
 from django.http import HttpRequest, JsonResponse
-from django.db.models import Max
+from django.db.models import Max, F
 
 from libwg import funcs, wgcmd
 from wg import wgop
@@ -75,25 +75,43 @@ class WgClientApi(View):
         pw = request.header.get("HTTP_WG_PASSWORD")
         auth = authenticate(username=username, password=pw)
         if auth is None:
-            return funcs.reserr("用户名或密码错误", -1)
+            return funcs.reserr("用户名或密码错误")
         else:
             return super().dispatch(request, *args, **kwargs)
 
-
     def get(self, request):
         user = request.user
-        print("username:", user.username, dir(user), "user id:", user.id)
-
-
-        # get all
-        peers = ClientWg.objects.filter(user__username=user.username)
+        #print("username:", user.username, dir(user), "user id:", user.id)
 
         data = []
-        for i in peers:
-            iface = funcs.clientwg2json(i)
-            data.append(iface)
+        # get all
+        for serverid in ClientWg.objects.filter(user__username=user.username).values("server").distinct():
+            print("server:", serverid)
 
+            server = ServerWg.objects.get(id=serverid["server"])
+
+            print("server_obj: ", server)
+
+            info = {}
+
+            info["serverid"] = server.id
+            info["serverwg"] = server.iface
+            info["address"] = server.address
+            info["network"] = server.network
+            info["publickey"] = server.publickey
+            
+            info["ifaces"] = []
+
+            for peer in ClientWg.objects.filter(user__username=user.username, server=server):
+                iface = funcs.clientwg2json(peer)
+                info["ifaces"].append(iface)
+            
+            data.append(info)
+
+        import pprint
+        pprint.pprint(data)
         return funcs.res(data)
+
 
     def post(self, request):
         username = request.user.username
