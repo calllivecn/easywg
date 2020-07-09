@@ -1,5 +1,5 @@
 from django.db.models import Max
-
+from django.contrib.auth.models import User
 
 from wg.models import ClientWg, ServerWg
 from libwg import wgcmd, funcs
@@ -8,7 +8,7 @@ from libwg import wgcmd, funcs
 def serverwg_add(wg):
     i = {}
 
-    iface = wg.get("iface")
+    iface = wg.get("iface", "")
     if iface:
         if ServerWg.objects.filter(iface=iface):
             return funcs.reserr(f"接口名： {iface} 已存在。")
@@ -17,9 +17,7 @@ def serverwg_add(wg):
     else:
         # 如果 iface 为空 就自动生成
         suffix = ServerWg.objects.aggregate(Max("id")).get("id__max")
-        if suffix is None:
-            i["iface"] = "easywg0"
-        else:
+        if suffix:
             p = 1
             tmp = "easywg" + str(suffix + p)
             while ServerWg.objects.filter(iface=tmp):
@@ -27,6 +25,8 @@ def serverwg_add(wg):
                 tmp = "easywg" + str(suffix + p)
 
             i["iface"] = tmp
+        else:
+            i["iface"] = "easywg0"
 
     address = wg.get("address", "")
     if address == "":
@@ -60,20 +60,28 @@ def serverwg_add(wg):
     i["comment"] = wg.get("comment", "")
     
     lp = wg.get("listenport", "")
-    if lp:
-        if ServerWg.objects.filter(listenport=lp):
-            return funcs.reserr(f"listenport {lp} 冲突")
-    else:
-        try:
-            lp = int(lp)
-        except Exception:
-            return funcs.reserr("listenport 必须是 1 ~ 65535")
 
+    
+    if lp == "":
         lp = ServerWg.objects.aggregate(Max("listenport")).get("listenport__max")
-        if lp is None:
-            i["listenport"] = 8324
-        else:
+
+        if lp:
             i["listenport"] = lp + 1
+        else:
+            i["listenport"] = 8324
+
+    else:
+
+        try:
+            listenport = int(lp)
+        except Exception:
+            return funcs.reserr("listenport 必须是 8324 ~ 65535 的数")
+
+
+        if ServerWg.objects.filter(listenport=listenport):
+            return funcs.reserr(f"listenport {lp} 冲突")
+        else:
+            i["listenport"] = listenport
 
 
     print("添加一个接口：", i)
@@ -121,7 +129,10 @@ def serverwg_change(wg):
     prikey = wg.get("privatekey")
     if prikey:
         iface.privatekey = prikey
-        iface.publickey = wgcmd.pubkey(prikey)
+        try:
+            iface.publickey = wgcmd.pubkey(prikey)
+        except Exception:
+            return funcs.reserr("privatekey 长度不对或格式不正确")
     else:
         iface.privatekey = wgcmd.genkey()
         iface.publickey = wgcmd.pubkey(iface.privatekey)
@@ -141,7 +152,7 @@ def serverwg_change(wg):
         try:
             lp = int(lp)
         except Exception:
-            return funcs.reserr("listenport 必须是 1 ~ 65535")
+            return funcs.reserr("listenport 必须是 8324 ~ 65535 的数")
 
         if ServerWg.objects.filter(listenport=lp).exclude(iface=iface_old_name):
             return funcs.reserr(f"listenport: {lp} 已存在， 请检查输入。")
@@ -150,3 +161,63 @@ def serverwg_change(wg):
 
     iface.save()
     return funcs.resok()
+
+
+def clientwg_add(username, wg):
+
+        client = {}
+
+        user_obj = User.objects.get(username=username)
+
+        client["user"] = user_obj
+
+        serverid = wg.get("serverid", "")
+        if serverid == "":
+            return funcs.reserr("从属server接口是必须的")
+
+        try:
+            serverid = int(serverid)
+        except Exception:
+            return funcs.reserr("从属server接口是数据的")
+
+        else:
+            try:
+                server_obj = ServerWg.objects.get(id=serverid)
+            except Exception:
+                return funcs.reserr(f"没有id: {serverid} 的server接口")
+        
+        client["server"] = server_obj
+
+        iface = wg.get("iface", "")
+
+        if iface == "":
+            suffix = ClientWg.objects.aggregate(Max("id"), ).get("id__max")
+            if suffix:
+                p = 1
+                tmp = "easywg" + str(suffix + p)
+                while ServerWg.objects.filter(iface=tmp):
+                    p += 1
+                    tmp = "easywg" + str(suffix + p)
+                client["iface"] = tmp
+            else:
+                client["iface"] = "easywg0"
+        else:
+            if ClientWg.objects.filter(user=user, iface=iface):
+                return funcs.reserr(f"{iface} 已存在！")
+            else:
+                client["iface"] = iface
+        
+        client["privatekey"] = wgcmd.genkey()
+        client["publickey"] = wgcmd.pubkey(client["privatekey"])
+        client["presharedkey"] = wgcmd.genpsk()
+
+        client["comment"] = wg.get("comment", "")
+        clientwg = ClientWg(**client)
+        clientwg.save()
+        client["id"] = clientwg.id
+
+        return funcs.res(funcs.clientwg2json(client))
+
+
+def clientwg_change(wg):
+    pass

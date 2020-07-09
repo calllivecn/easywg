@@ -11,11 +11,19 @@
                 <label>publickey: {{ data.publickey }}</label>
             </div>
             <table>
-                <tr><th>接口名</th><th>启用的网络</th><th>描述</th><th>conf配置</th><th>CRUD没有CR</th></tr>
+                <tr>
+                    <th>接口名</th>
+                    <th>IP</th>
+                    <th>Allowed-ips</th>
+                    <th>描述</th>
+                    <th>conf配置</th>
+                    <th>CURD没有CR</th>
+                </tr>
 
                 <tr v-for="iface in data.ifaces" v-bind:key="data.ifaces.iface">
                     <td>{{ iface.name }}</td>
-                    <td>Allowed-ips: {{ iface.allowedips }}</td>
+                    <td>{{ iface.ip }}</td>
+                    <td>{{ iface.allowedips }}</td>
                     <td>{{ iface.comment }}</td>
                     <td v-on:click="conf(iface.name)">下载配置</td>
                     <td><span v-on:change="change">修改</span><span> - </span><span v-on:remove="remove">删除</span></td>
@@ -37,7 +45,24 @@ export default {
     },
     created: function(){
         var vm = this
-        this.axios.get("/myinterfaces/")
+
+        eventbus.$on('event-change', function(e){
+            vm.prompt = ""
+        })
+
+        eventbus.$on("client-change-data", function(iface){
+            for(let i in vm.datas){
+                if(vm.datas[i].id == iface.id){
+                    vm.data.splice(i, 1, iface)
+                    return
+                }
+            }
+            vm.data.push(iface)
+            vm.data.sort(function(a, b){return a.id - b.id})
+        })
+
+        //初始化 数据
+        this.axios.get("/clientwg/")
         .then(function(res){
             if(res.data.code == 0){
                 vm.datas = res.data.data
@@ -49,6 +74,16 @@ export default {
         })
     },
     methods: {
+        add: function(){
+            var vm = this 
+            eventbus.$emit("event-change", "client-change-add")
+        },
+        remove: function(){
+            
+        },
+        change: function(){
+
+        },
         conf: function(){
             var vm = this
             this.axios.get("/client/conf/",{
@@ -57,15 +92,6 @@ export default {
                     "format": "",
                 }
             })
-        },
-        change: function(){
-
-        },
-        add: function(){
-            
-        },
-        remove: function(){
-            
         },
     }
 }

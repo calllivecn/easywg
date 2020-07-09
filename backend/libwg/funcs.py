@@ -47,12 +47,12 @@ def clientwg2json(iface):
     iface_json = {
               "id": iface.id,
               "iface": iface.iface,
-              "net": iface.net,
+              "ip": iface.ip,
               "privatekey": iface.privatekey,
               "publickey": iface.publickey,
-              "listenport": iface.listenport,
+              "presharedkey": iface.presharedkey,
               "persistentkeepalive": iface.persistentkeepalive,
-              "boot": iface.boot,
+              "allowedips": iface.allowedips_c,
               "comment": iface.comment
           }
     return iface_json
