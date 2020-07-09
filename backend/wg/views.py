@@ -1,15 +1,18 @@
 from django.contrib.auth import authenticate
+from django.contrib.auth.models import User
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.csrf import csrf_exempt
 from django.views import View
 from django.http import HttpRequest, JsonResponse
-
+from django.db.models import Max
 
 from libwg import funcs, wgcmd
 from wg import wgop
 from wg.models import ServerWg, ClientWg
 from wg.startwg import startserver, stopserver
 
+def getuser(username):
+    return User.objects.get(username=username)
 
 def checkargs(request, arg, choices):
     default = choices[0]
@@ -76,6 +79,31 @@ class WgClientApi(View):
         else:
             return super().dispatch(request, *args, **kwargs)
 
+
+    def get(self, request):
+        user = request.user
+        print("username:", user.username, dir(user), "user id:", user.id)
+
+
+        # get all
+        peers = ClientWg.objects.filter(user__username=user.username)
+
+        data = []
+        for i in peers:
+            iface = funcs.clientwg2json(i)
+            data.append(iface)
+
+        return funcs.res(data)
+
+    def post(self, request):
+        username = request.user.username
+        wg = request.META["WG_BODY"]
+        return wgop.clientwg_add(username, wg)
+
+
+
+class WgClientConfig(View):
+
     def get(self, request):
 
         # value: shell or conf
@@ -85,17 +113,5 @@ class WgClientApi(View):
         ls = ("linux", "andriod", "windows", "ios", "macos")
         client = checkargs(request, "client", ls)
 
+        config = ClientWg.objects.get(user=user, iface=iface)
         return funcs.res([{"name":"wg0", "privatekey": "aslkjfisajefl", "imde": "lsidfj"}])
-
-
-class WgClientConfig(View):
-
-    def get(self, request):
-        iface = request.GET.get("iface")
-        user = request.user
-
-        config = ClientWg.objects.get(user=user, ifname=iface)
-
-        return funcs.res(config)
-
-

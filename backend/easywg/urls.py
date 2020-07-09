@@ -33,7 +33,7 @@ urlpatterns = [
 
     path("accounts/", include("wg.urls")),
     path("serverwg/", WgServerApi.as_view()),
-    path("myinterfaces/", WgClientApi.as_view()),
+    path("clientwg/", WgClientApi.as_view()),
     path("client/conf/", WgClientConfig.as_view()),
 
     #path('admin/', admin.site.urls),

@@ -27,7 +27,7 @@ import eventbus from '../js/eventbus.js'
 import server_list_delete from '@/components/server-list-delete'
 import server_change_add from '@/components/server-change-add'
 import client_list_delete from '@/components/client-list-delete'
-//import client_change_add from '@/components/client-change-add'
+import client_change_add from '@/components/client-change-add'
 
 export default {
     name: "center",
@@ -42,7 +42,7 @@ export default {
         "server-list-delete": server_list_delete,
         "server-change-add": server_change_add,
         "client-list-delete": client_list_delete,
-        //"client-change-add": client_change_add,
+        "client-change-add": client_change_add,
     },
     created: function(){
         // 根据事件动态渲染

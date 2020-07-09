@@ -51,9 +51,11 @@ export default {
     },
     created: function(){
         var vm = this
+
         eventbus.$on("event-change", function(e){
-            this.prompt = ""
+            vm.prompt = ""
         })
+
         eventbus.$on('server-change', function(ifaceinfo){
             if(ifaceinfo == null){
                 vm.iface = {boot: true}
