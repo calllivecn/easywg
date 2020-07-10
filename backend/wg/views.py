@@ -29,8 +29,8 @@ class WgServerApi(View):
         return super().dispatch(request, *args, **kwargs)
 
     def get(self, request):
-        iface = request.GET.get("iface")
-        if iface is None:
+        iface = request.GET.get("iface", "")
+        if iface == "":
             l = []
             for queryset in ServerWg.objects.all():
                 l.append(funcs.serverwg2json(queryset))
@@ -55,9 +55,9 @@ class WgServerApi(View):
 
     def delete(self, request):
 
-        iface = request.META["WG_BODY"].get("iface")
+        iface = request.META["WG_BODY"].get("iface", "")
 
-        if iface is None:
+        if iface == "":
             return funcs.reserr("删除server接口需要接口名")
         
         try:
@@ -86,11 +86,7 @@ class WgClientApi(View):
         data = []
         # get all
         for serverid in ClientWg.objects.filter(user__username=user.username).values("server").distinct():
-            print("server:", serverid)
-
             server = ServerWg.objects.get(id=serverid["server"])
-
-            print("server_obj: ", server)
 
             info = {}
 
@@ -108,8 +104,6 @@ class WgClientApi(View):
             
             data.append(info)
 
-        import pprint
-        pprint.pprint(data)
         return funcs.res(data)
 
 
@@ -118,6 +112,24 @@ class WgClientApi(View):
         wg = request.META["WG_BODY"]
         return wgop.clientwg_add(username, wg)
 
+    def delete(self, request):
+        wgid = request.META["WG_BODY"].get("ifaceid", "")
+        if wgid == "":
+            return funcs.reserr("需要iface id")
+        
+        try:
+            wgid = int(wgid)
+        except Exception:
+            return funcs.reserr("iface id 是个整数")
+
+        try:
+            clientwg = ClientWg.objects.get(id=wgid)
+        except Exception:
+            return funcs.reserr(f"iface id: {wgid} 不存在")
+        
+        clientwg.delete()
+
+        return funcs.resok()
 
 
 class WgClientConfig(View):

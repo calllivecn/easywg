@@ -117,8 +117,8 @@ export default {
         },
         select: function(event){
             console.log("event:", event.target.value)
-            this.server = event.target.value
-            console.log("server: ", this.server)
+            this.serverid = event.target.value
+            console.log("serverid: ", this.serverid)
         },
         show: function(who, arg){
             console.log("who:", who, "arg:", arg)

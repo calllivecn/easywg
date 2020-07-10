@@ -56,14 +56,14 @@ export default {
         })
 
         eventbus.$on("client-change-data", function(arg){
+            console.log("arg:", arg)
 
             serverid = arg.serverid
             iface = arg.iface
 
-
             // add
-            for(server of this.datas){
-                if(serverid == server.id){
+            for(let i in this.datas){
+                if(serverid == this.datas[i].id){
                     server.push(iface)
                     server.sort(function(a, b){return a.id - b.id})
                 }
@@ -89,18 +89,33 @@ export default {
         },
         remove: function(serverid, ifaceid){
             console.log("删除ifaceid：",ifaceid)
-            for(let i in this.datas){
+            var vm = this
 
-                if(serverid == this.datas[i].id){
+            this.axios.delete("/clientwg/", {data:{"ifaceid": ifaceid}})
+            .then(function(res){
+                if(res.data.code == 0){
 
-                    for(let j in this.datas[i].ifaces){
-                        if(ifaceid == this.datas[i].ifaces[j].id){
-                            this.datas[i].ifaces.splice(j, 1)
-                            return
+                    for(let i in vm.datas){
+
+                        if(serverid == vm.datas[i].id){
+
+                            for(let j in vm.datas[i].ifaces){
+                                if(ifaceid == vm.datas[i].ifaces[j].id){
+                                    vm.datas[i].ifaces.splice(j, 1)
+                                    return
+                                }
+                            }
                         }
                     }
+
+                }else{
+                    vm.prompt = res.data.msg
                 }
-            }
+
+            }, function(){
+                vm.prompt = "服务器出错！"
+            })
+
             
         },
         change: function(){

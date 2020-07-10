@@ -8,8 +8,6 @@
         </div>
 
         <div id="context" class="show something">
-
-            <p>{{ currentComponent }}</p>
             <keep-alive>
             <component v-bind:is="currentComponent"></component>
             </keep-alive>
@@ -34,7 +32,6 @@ export default {
     data: function(){
         return {
             superuser: null,
-            WG: 'C_LIST',
             currentComponent: "client-list-delete",
         }
     },
