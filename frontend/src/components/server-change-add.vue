@@ -57,6 +57,7 @@ export default {
         })
 
         eventbus.$on('server-change', function(ifaceinfo){
+            console.log("第一次点修改时 ifaceinfo: ", ifaceinfo)
             if(ifaceinfo == null){
                 vm.iface = {boot: true}
                 vm.op = "添加"
