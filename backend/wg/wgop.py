@@ -207,7 +207,7 @@ def clientwg_add(username, wg):
             else:
                 client["iface"] = iface
         
-        #client["ip"] = 
+        #client["ip"] = server_obj
         
         client["privatekey"] = wgcmd.genkey()
         client["publickey"] = wgcmd.pubkey(client["privatekey"])

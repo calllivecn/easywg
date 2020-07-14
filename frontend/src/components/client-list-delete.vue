@@ -5,7 +5,7 @@
         <button v-on:click="add">添加</button>
         <div v-for="data in datas" v-bind:key="data.serverwg">
 
-            <div style="text-align: left;">
+            <div>
                 <label>Server: {{ data.serverwg }} </label>
                 <label>address: {{ data.address }}</label>
                 <label>network: {{ data.network }}</label>
@@ -22,7 +22,7 @@
                 </tr>
 
                 <tr v-for="iface in data.ifaces" v-bind:key="iface.iface">
-                    <td>{{ iface.name }}</td>
+                    <td>{{ iface.iface }}</td>
                     <td>{{ iface.ip }}</td>
                     <td>{{ iface.allowedips }}</td>
                     <td>{{ iface.comment }}</td>
@@ -51,22 +51,33 @@ export default {
     created: function(){
         var vm = this
 
-        eventbus.$on('event-change', function(e){
-            vm.prompt = ""
+        eventbus.$on("client-change", function(){
+
+            if(Object.keys(eventbus.data).length != 0){
+                console.log("eventbus.data: --> ", eventbus.data)
+                var serverid = eventbus.data.serverid
+                var iface = eventbus.data.iface
+
+                // add
+                if(vm.datas.length == 0){
+                    vm.datas.push({serverid, iface})
+                }else{
+                    for(let i in vm.datas){
+
+                        if(serverid == vm.datas[i].serverid){
+                            console.log(iface, "加入serverid: ", serverid)
+                            vm.datas[i].ifaces.push(iface)
+                            vm.datas[i].ifaces.sort(function(a, b){return a.id - b.id})
+                        }
+                    }
+                }
+            }
         })
 
-        eventbus.$on("client-change-data", function(arg){
-            console.log("arg:", arg)
-
-            serverid = arg.serverid
-            iface = arg.iface
-
-            // add
-            for(let i in this.datas){
-                if(serverid == this.datas[i].id){
-                    server.push(iface)
-                    server.sort(function(a, b){return a.id - b.id})
-                }
+        eventbus.$on('event-change', function(e){
+            vm.prompt = ""
+            if(eventbus.e == "client-change"){
+                eventbus.$emit(eventbus.e)
             }
         })
 
@@ -81,6 +92,8 @@ export default {
         },function(res){
             vm.prompt = "服务器出错！"
         })
+    },
+    mounted: function(){
     },
     methods: {
         add: function(){
