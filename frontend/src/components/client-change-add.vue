@@ -99,14 +99,16 @@ export default {
     methods: {
         add: function(iface){
             var vm = this
-            console.log(iface)
             iface.serverid = this.serverid
             console.log(iface)
+
             this.axios.post("/clientwg/", iface)
             .then(function(res){
                 if(res.data.code == 0){
+                    eventbus.data = {"serverid": iface.serverid, "iface": res.data.data}
+                    eventbus.e = "client-change"
                     eventbus.$emit("event-change", "client-list-delete")
-                    eventbus.$emit("client-change", res.data.data)
+                    //eventbus.$emit("client-change", res.data.data)
                 }else{
                     vm.prompt = res.data.msg
                 }
