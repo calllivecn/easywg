@@ -43,6 +43,8 @@ def serverwg_add(wg):
         else:
             i["network"] = network
     
+    i["ip"] = funcs.gateway(i["network"])
+    
     prikey = wg.get("privatekey")
     if not prikey:
         i["privatekey"] = wgcmd.genkey()
@@ -165,59 +167,123 @@ def serverwg_change(wg):
 
 def clientwg_add(username, wg):
 
-        client = {}
+    client = {}
 
-        user_obj = User.objects.get(username=username)
+    user_obj = User.objects.get(username=username)
 
-        client["user"] = user_obj
+    client["user"] = user_obj
 
-        serverid = wg.get("serverid", "")
-        if serverid == "":
-            return funcs.reserr("从属server接口是必须的")
+    serverid = wg.get("serverid", "")
+    if serverid == "":
+        return funcs.reserr("从属server接口是必须的")
 
-        try:
-            serverid = int(serverid)
-        except Exception:
-            return funcs.reserr("从属server接口是必须的")
+    try:
+        serverid = int(serverid)
+    except Exception:
+        return funcs.reserr("从属server接口是必须的")
 
-        else:
-            try:
-                server_obj = ServerWg.objects.get(id=serverid)
-            except Exception:
-                return funcs.reserr(f"没有id: {serverid} 的server接口")
-        
-        client["server"] = server_obj
+    try:
+        server_obj = ServerWg.objects.get(id=serverid)
+    except Exception:
+        return funcs.reserr(f"没有id: {serverid} 的server接口")
+    
+    client["server"] = server_obj
 
-        iface = wg.get("iface", "")
+    iface = wg.get("iface", "")
 
-        if iface == "":
-            suffix = ClientWg.objects.aggregate(Max("id"), ).get("id__max")
-            if suffix:
-                p = 1
+    if iface == "":
+        suffix = ClientWg.objects.aggregate(Max("id"), ).get("id__max")
+        if suffix:
+            p = 1
+            tmp = "wg" + str(suffix + p)
+            while ServerWg.objects.filter(iface=tmp):
+                p += 1
                 tmp = "wg" + str(suffix + p)
-                while ServerWg.objects.filter(iface=tmp):
-                    p += 1
-                    tmp = "wg" + str(suffix + p)
-                client["iface"] = tmp
-            else:
-                client["iface"] = "wg0"
+            client["iface"] = tmp
         else:
-            if ClientWg.objects.filter(user=user_obj, iface=iface):
-                return funcs.reserr(f"{iface} 已存在！")
-            else:
-                client["iface"] = iface
+            client["iface"] = "wg0"
+    else:
+        if ClientWg.objects.filter(user=user_obj, iface=iface):
+            return funcs.reserr(f"{iface} 已存在！")
+        else:
+            client["iface"] = iface
+    
+    genip = funcs.getipaddr(server_obj.network)
+    for ip in genip:
+        if ClientWg.objects.filter(ip=ip):
+            print(f"ip: {ip} 已经存在, 查看下一个")
+        else:
+            break
+
+    client["ip"] = ip
+
+
+    client["allowedips_s"] = funcs.getnet_s(client["ip"])
+
+    client["allowedips_c"] = server_obj.network
+    
+    client["privatekey"] = wgcmd.genkey()
+    client["publickey"] = wgcmd.pubkey(client["privatekey"])
+    client["presharedkey"] = wgcmd.genpsk()
+
+    client["comment"] = wg.get("comment", "")
+    clientwg = ClientWg(**client)
+    clientwg.save()
+    return funcs.res(funcs.clientwg2json(clientwg))
+
+
+def clientwg_change(username, wg):
+    client = {}
+
+    user_obj = User.objects.get(username=username)
+
+    serverid = wg.get("serverid", "")
+
+    if serverid == "":
+        return funcs.reserr("从属server接口是必须的")
+
+    try:
+        serverid = int(serverid)
+    except Exception:
+        return funcs.reserr("从属server接口是必须的")
+
+    try:
+        server_obj = ServerWg.objects.get(id=serverid)
+    except Exception:
+        return funcs.reserr(f"没有id: {serverid} 的server接口")
+    
+    client["server"] = server_obj
+
+    iface = wg.get("iface", "")
+
+    if iface == "":
+        return funcs.reserr("接口名不能为空！")
+    else:
+        if ClientWg.objects.filter(user=user_obj, iface=iface):
+            return funcs.reserr(f"{iface} 已存在！")
+        else:
+            client["iface"] = iface
+    
+    """
+    privatekey = wg.get("privatekey")
+    if privatekey == "":
+        return funcs.reserr("privatekey 不能为空")
+    else:
+        try:
+            client["privatekey"] = wgcmd.genkey()
+        except Exception:
+            return funcs.reserr("privatekey 错误")
         
-        #client["ip"] = server_obj
-        
-        client["privatekey"] = wgcmd.genkey()
-        client["publickey"] = wgcmd.pubkey(client["privatekey"])
-        client["presharedkey"] = wgcmd.genpsk()
+        client["publickey"] = wgcmd.pubkey(client["privatekye"])
+    
+    presharedkey = wg.get("presharedkey")
+    if presharedkey == "":
+        return funcs.reserr("presharedkey 不能为空")
+    else:
+        try:
+            client["presharedkey"] = 
+    """
 
-        client["comment"] = wg.get("comment", "")
-        clientwg = ClientWg(**client)
-        clientwg.save()
-        return funcs.res(funcs.clientwg2json(clientwg))
-
-
-def clientwg_change(wg):
-    pass
+    return funcs.resok()
+    
+    

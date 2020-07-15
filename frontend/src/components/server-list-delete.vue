@@ -9,7 +9,7 @@
                 <th>Server 接口</th>
                 <th>Address</th>
                 <th>端口</th>
-                <th>网络地址</th>
+                <th>接口网关</th>
                 <th>公钥</th>
                 <th>自启动</th>
                 <th>描述</th>
@@ -19,7 +19,7 @@
                 <td>{{ iface.iface }}</td>
                 <td>{{ iface.address}}</td>
                 <td>{{ iface.listenport }}</td>
-                <td>{{ iface.network }}</td>
+                <td>{{ iface.ip }}</td>
                 <td>{{ iface.publickey }}</td>
                 <td>{{ iface.boot }}</td>
                 <td>{{ iface.comment }}</td>

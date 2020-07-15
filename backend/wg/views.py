@@ -93,7 +93,7 @@ class WgClientApi(View):
             info["serverid"] = server.id
             info["serverwg"] = server.iface
             info["address"] = server.address
-            info["network"] = server.network
+            info["ip"] = server.ip
             info["publickey"] = server.publickey
             
             info["ifaces"] = []
@@ -104,6 +104,8 @@ class WgClientApi(View):
             
             data.append(info)
 
+        import pprint
+        pprint.pprint(data)
         return funcs.res(data)
 
 
@@ -111,6 +113,11 @@ class WgClientApi(View):
         username = request.user.username
         wg = request.META["WG_BODY"]
         return wgop.clientwg_add(username, wg)
+    
+    def put(self, request):
+        username = request.user.username
+        wg = request.META["WG_BODY"]
+        return wgop.clientwg_change(username, wg)
 
     def delete(self, request):
         wgid = request.META["WG_BODY"].get("ifaceid", "")

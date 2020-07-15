@@ -8,11 +8,11 @@
         </div>
 
         <div id="context" class="show something">
-            <keep-alive>
-            <component v-bind:is="currentComponent"></component>
-            </keep-alive>
 
+            <component v-bind:is="currentComponent"></component>
             <!--
+            <keep-alive>
+            </keep-alive>
             -->
         </div>
 
