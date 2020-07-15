@@ -62,7 +62,7 @@ export default {
           vm.prompt = "服务器出错！"
         })
 
-
+        /*
         if(eventbus.e == 'server-change'){
             var iface = eventbus.data
             for(let i in vm.data){
@@ -76,6 +76,7 @@ export default {
             vm.data.push(iface)
             vm.data.sort(function(a, b){return a.id - b.id})
         }
+        */
     },
     methods:{
         add: function(){
@@ -89,8 +90,7 @@ export default {
             this.axios.get("/serverwg/", {params: {"iface": iface}})
             .then(function(res){
                 if(res.data.code == 0){
-                    eventbus.e = 'server-change'
-                    eventbus.data = res.data.data
+                    eventbus.etype('server-change', res.data.data)
                     eventbus.$emit("event-change", "server-change-add")
                 }else{
                     vm.prompt = res.data.msg
