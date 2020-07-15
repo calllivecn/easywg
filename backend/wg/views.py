@@ -1,9 +1,9 @@
 from django.contrib.auth import authenticate
 from django.contrib.auth.models import User
 from django.contrib.auth.decorators import login_required
-from django.views.decorators.csrf import csrf_exempt
+from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views import View
-from django.http import HttpRequest, JsonResponse
+from django.http import HttpResponse, JsonResponse
 from django.db.models import Max, F
 
 from libwg import funcs, wgcmd
@@ -14,19 +14,9 @@ from wg.startwg import startserver, stopserver
 def getuser(username):
     return User.objects.get(username=username)
 
-def checkargs(request, arg, choices):
-    default = choices[0]
-    arg = request.GET.get(arg, default)
-    if arg in choices:
-        return arg
-    else:
-        return default
 
 
-class WgServerApi(View):
-
-    def dispatch(self, request, *args, **kwargs):
-        return super().dispatch(request, *args, **kwargs)
+class WgServerApi(LoginRequiredMixin, View):
 
     def get(self, request):
         iface = request.GET.get("iface", "")
@@ -68,16 +58,14 @@ class WgServerApi(View):
         iface_model.delete()
         return funcs.resok()
 
-class WgClientApi(View):
+class WgClientApi(LoginRequiredMixin, View):
 
-    def dispatch_disable(self, request, *args, **kwargs):
-        username = request.META.get("HTTP_WG_USERNAME")
-        pw = request.header.get("HTTP_WG_PASSWORD")
-        auth = authenticate(username=username, password=pw)
-        if auth is None:
-            return funcs.reserr("用户名或密码错误")
-        else:
-            return super().dispatch(request, *args, **kwargs)
+    """
+    @login_required
+    def dispatch(self, request, *args, **kwargs):
+        print("已登录。： ", request.user)
+        return super().dispatch(request, *args, **kwargs)
+    """
 
     def get(self, request):
         user = request.user
@@ -104,8 +92,6 @@ class WgClientApi(View):
             
             data.append(info)
 
-        import pprint
-        pprint.pprint(data)
         return funcs.res(data)
 
 
@@ -139,16 +125,56 @@ class WgClientApi(View):
         return funcs.resok()
 
 
+def checkargs(request, arg, choices):
+    default = choices[0]
+    arg = request.GET.get(arg, default)
+    if arg in choices:
+        return arg
+    else:
+        return default
+
 class WgClientConfig(View):
 
-    def get(self, request):
+    def dispatch(self, request, *args, **kwargs):
+        username = request.META.get("HTTP_WG_USERNAME")
+        pw = request.META.get("HTTP_WG_PASSWORD")
+        self.auth = authenticate(username=username, password=pw)
+        if self.auth is None:
+            return funcs.reserr("用户名或密码错误")
+        else:
+            return super().dispatch(request, *args, **kwargs)
 
+    def get(self, request):
         # value: shell or conf
         ls = ("conf", "shell", "qrcode")
         fmt = checkargs(request, "format", ls)
 
-        ls = ("linux", "andriod", "windows", "ios", "macos")
-        client = checkargs(request, "client", ls)
+        ls = ("andriod", "linux", "windows", "ios", "macos")
+        ostype = checkargs(request, "ostype", ls)
 
-        config = ClientWg.objects.get(user=user, iface=iface)
-        return funcs.res([{"name":"wg0", "privatekey": "aslkjfisajefl", "imde": "lsidfj"}])
+        iface = request.GET.get("iface", "")
+        if iface == "":
+            return funcs.reserr("需要指定接口！")
+
+        try:
+            iface = ClientWg.objects.get(user=self.auth, iface=iface)
+        except ClientWG.DoesNotExist:
+            return funcs.reserr("指定的接口名不存在！")
+        
+        
+        conf = {}
+
+        conf["publickey"] = iface.server.publickey
+
+        if ostype in ("andriod", "windows", "ios", "macos"):
+            conf["address"] = iface.server.ip
+
+        conf["privatekey"] = iface.privatekey
+        conf["presharedkey"] = iface.presharedkey
+        conf["allowedips"] = iface.allowedips_c
+        conf["endpoint"] = iface.server.address.split("/")[0] + ":" + str(iface.server.listenport)
+        conf["persistentkeepalive"] = iface.persistentkeepalive
+
+        make_conf = funcs.render("client.conf", conf)
+
+        return HttpResponse(make_conf)

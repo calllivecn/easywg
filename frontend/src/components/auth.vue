@@ -1,6 +1,6 @@
 <template>
     <div id="auth">
-        <p v-text="title">Authenticate</p>
+        <p v-text="title"></p>
         <p id="showget">{{ dataget }}</p>
         <button v-on:click="get">验证当前用户</button>
     </div>
@@ -11,12 +11,11 @@
         name: "auth",
         data: function(){
             return {
-                title: "这是 data() 渲染的",
+                title: "Authenticate",
                 dataget: "没执行前的数据值",
             }
         },
         mounted: function(){
-            console.log("Auth 组件 mounted 完成")
         },
         methods: {
             get: function(){
@@ -25,10 +24,10 @@
                 .then(
                     function(res){
                         vm.dataget = res.data
+                        console.log(res.data)
                     },
                     function(res){
-                        console.log("error")
-                        vm.dataget = res
+                        vm.dataget = res.data.msg
                     })
             }
         },

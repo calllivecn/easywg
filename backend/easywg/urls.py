@@ -16,7 +16,7 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, re_path, include
 from django.views.static import serve
-
+from django.views.decorators.csrf import csrf_exempt
 
 from easywg import settings
 from wg.views import WgServerApi, WgClientApi, WgClientConfig
@@ -34,7 +34,7 @@ urlpatterns = [
     path("accounts/", include("wg.urls")),
     path("serverwg/", WgServerApi.as_view()),
     path("clientwg/", WgClientApi.as_view()),
-    path("client/conf/", WgClientConfig.as_view()),
+    path("client/conf/", csrf_exempt(WgClientConfig.as_view())),
 
     #path('admin/', admin.site.urls),
 ]
