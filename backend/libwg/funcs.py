@@ -1,5 +1,8 @@
+from os import path
 import ipaddress
 
+import jinja2
+from django.conf import settings
 from django.http import JsonResponse
 
 def json(j):
@@ -79,3 +82,14 @@ def getnet_s(address):
 
 def getnet_c():
     return str()
+
+
+
+def render(template_name, obj):
+    with open(path.sep.join([settings.BASE_DIR, "templates", template_name])) as f:
+        temp_content = f.read()
+
+    temp = jinja2.Template(temp_content)
+
+    return temp.render(obj)
+

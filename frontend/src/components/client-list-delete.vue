@@ -20,7 +20,7 @@
                     <th>Allowed-ips</th>
                     <th>描述</th>
                     <th>conf配置</th>
-                    <th>CURD没有CR</th>
+                    <th>删除 peer</th>
                 </tr>
 
                 <tr v-for="iface in data.ifaces" v-bind:key="iface.iface">
@@ -110,13 +110,18 @@ export default {
         conf: function(ifacename){
             var vm = this
             console.log("conf: ", ifacename)
-            return 
             this.axios.get("/client/conf/",{
                 params:{
-                    "os": "",
-                    "format": "",
+                    "ostype": "andriod",
+                    "format": "conf",
                 }
             })
+            .then(function(res){
+                console.log(res.data)
+            },function(res){
+                vm.prompt = res.data.msg
+            })
+
         },
     }
 }
