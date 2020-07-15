@@ -50,25 +50,16 @@ export default {
         }
     },
     created: function(){
-        var vm = this
-
-        eventbus.$on("event-change", function(e){
-            vm.prompt = ""
-        })
-
-        eventbus.$on('server-change', function(ifaceinfo){
-            console.log("第一次点修改时 ifaceinfo: ", ifaceinfo)
-            if(ifaceinfo == null){
-                vm.iface = {boot: true}
-                vm.op = "添加"
-            }else{
-                vm.iface = ifaceinfo
-                vm.op = "修改"
-            }
-        })
     },
     mounted: function(){
-        console.log("keep-alive mounted 下也只执行一次吗？")
+        var vm = this
+        if(eventbus.e == 'server-add'){
+            vm.iface = {boot: true}
+            vm.op = "添加"
+        }else if(eventbus.e == 'server-change'){
+            vm.iface = eventbus.data
+            vm.op = "修改"
+        }
     },
     methods:{
         show_privatekey: function(){
@@ -83,8 +74,9 @@ export default {
             this.axios.post("/serverwg/", this.iface)
             .then(function(res){
                 if(res.data.code == 0){
+                    eventbus.e = 'server-add'
+                    eventbus.data = res.data.data
                     eventbus.$emit("event-change", "server-list-delete")
-                    eventbus.$emit("server-change-data", res.data.data)
 
                 }else{
                     vm.prompt = res.data.msg
@@ -98,8 +90,9 @@ export default {
                 this.axios.put("/serverwg/", this.iface)
                 .then(function(res){
                     if(res.data.code == 0){
+                        eventbus.e = 'server-change'
+                        eventbus.data = vm.iface
                         eventbus.$emit("event-change", "server-list-delete")
-                        eventbus.$emit("server-change-data", vm.iface)
                     }else{
                         vm.prompt = res.data.msg
                     }

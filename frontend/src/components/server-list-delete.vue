@@ -46,24 +46,10 @@ export default {
         }
     },
     created: function(){
+    },
+    mounted: function(){
         var vm = this
-
-        eventbus.$on('event-change', function(e){
-            vm.prompt = ""
-        })
-
-        eventbus.$on("server-change-data", function(iface){
-            for(let i in vm.data){
-                if(vm.data[i].id == iface.id){
-                    vm.data.splice(i, 1, iface)
-                    return
-                }
-            }
-            vm.data.push(iface)
-            vm.data.sort(function(a, b){return a.id - b.id})
-        })
-        
-        
+        console.log("get /serverwg/")
         this.axios.get("/serverwg/")
         .then(function(res){
             if(res.data.code == 0){
@@ -75,13 +61,26 @@ export default {
         function(res){
           vm.prompt = "服务器出错！"
         })
-    },
-    mounted: function(){
+
+
+        if(eventbus.e == 'server-change'){
+            var iface = eventbus.data
+            for(let i in vm.data){
+                if(vm.data[i].id == iface.id){
+                    vm.data.splice(i, 1, iface)
+                    return
+                }
+            }
+        }else if(eventbus.e == 'server-add'){
+            var iface = eventbus.data
+            vm.data.push(iface)
+            vm.data.sort(function(a, b){return a.id - b.id})
+        }
     },
     methods:{
         add: function(){
+            eventbus.e = ''
             eventbus.$emit('event-change', 'server-change-add')
-            eventbus.$emit('server-change', null)
         },
         change: function(iface){
             console.log("server 修改: ", iface)
@@ -90,8 +89,9 @@ export default {
             this.axios.get("/serverwg/", {params: {"iface": iface}})
             .then(function(res){
                 if(res.data.code == 0){
+                    eventbus.e = 'server-change'
+                    eventbus.data = res.data.data
                     eventbus.$emit("event-change", "server-change-add")
-                    eventbus.$emit("server-change", res.data.data)
                 }else{
                     vm.prompt = res.data.msg
                 }
