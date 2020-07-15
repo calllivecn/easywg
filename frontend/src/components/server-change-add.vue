@@ -59,6 +59,7 @@ export default {
         }else if(eventbus.e == 'server-change'){
             vm.iface = eventbus.data
             vm.op = "修改"
+            console.log("vm.iface: ", vm.iface)
         }
     },
     methods:{
@@ -74,8 +75,7 @@ export default {
             this.axios.post("/serverwg/", this.iface)
             .then(function(res){
                 if(res.data.code == 0){
-                    eventbus.e = 'server-add'
-                    eventbus.data = res.data.data
+                    eventbus.etype('server-add', res.data.data)
                     eventbus.$emit("event-change", "server-list-delete")
 
                 }else{
@@ -90,8 +90,7 @@ export default {
                 this.axios.put("/serverwg/", this.iface)
                 .then(function(res){
                     if(res.data.code == 0){
-                        eventbus.e = 'server-change'
-                        eventbus.data = vm.iface
+                        eventbus.etype('server-change', vm.iface)
                         eventbus.$emit("event-change", "server-list-delete")
                     }else{
                         vm.prompt = res.data.msg
