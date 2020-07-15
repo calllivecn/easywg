@@ -1,3 +1,4 @@
+import ipaddress
 
 from django.http import JsonResponse
 
@@ -29,6 +30,7 @@ def serverwg2json(iface):
               "address": iface.address,
               "listenport": iface.listenport,
               "network": iface.network,
+              "ip": iface.ip,
               "privatekey": iface.privatekey,
               "publickey": iface.publickey,
               "listenport": iface.listenport,
@@ -48,11 +50,32 @@ def clientwg2json(iface):
               "id": iface.id,
               "iface": iface.iface,
               "ip": iface.ip,
-              "privatekey": iface.privatekey,
+              #"privatekey": iface.privatekey,
               "publickey": iface.publickey,
-              "presharedkey": iface.presharedkey,
-              "persistentkeepalive": iface.persistentkeepalive,
+              #"presharedkey": iface.presharedkey,
+              #"persistentkeepalive": iface.persistentkeepalive,
               "allowedips": iface.allowedips_c,
               "comment": iface.comment
           }
     return iface_json
+
+
+def gateway(network):
+    net = ipaddress.IPv4Network(network)
+    ip = next(net.hosts())
+    return str(ip) + "/" + net.with_prefixlen.split("/")[1]
+
+def getipaddr(network):
+    net = ipaddress.IPv4Network(network)
+    gen = net.hosts()
+    gateway = next(gen)
+
+    for ip in gen:
+        yield str(ip) + "/" + net.with_prefixlen.split("/")[1]
+
+
+def getnet_s(address):
+    return str(ipaddress.IPv4Interface(address))
+
+def getnet_c():
+    return str()

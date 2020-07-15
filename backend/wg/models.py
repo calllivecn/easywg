@@ -20,6 +20,7 @@ class ServerWg(models.Model):
     iface = models.CharField(max_length=64, unique=True)
     address = models.CharField(max_length=64)
     network = models.CharField(max_length=512, unique=True)
+    ip = models.CharField(max_length=512, unique=True)
     privatekey = models.CharField(max_length=64)
     publickey = models.CharField(max_length=64)
     listenport = models.IntegerField(unique=True)

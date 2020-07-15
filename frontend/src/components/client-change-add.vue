@@ -11,25 +11,21 @@
             <option v-for="wg of wgs" v-bind:value="wg.id" v-text="wg.iface"></option>
         </select>
         <br>
-        <!--
-        <span>Address</span><input v-model="iface.address" placeholder="Wireguard 使用的ip或域名">
-        <br>
-        <span>listenport: </span><input v-model="iface.listenport" type="text" placeholder="端口(留空自动生成)">
-        <br>
 
         <span>privatekey: </span>
         <input v-model="iface.privatekey" v-bind:type="showprivatekey" placeholder="私钥(留空为自动生成)">
         <button v-on:click="show('showprivatekey', showprivatekey)">显示私钥</button>
         <br>
 
-        <span>publickey: </span><input v-model="iface.publickey" type="text" placeholder="一般不用输入">
-        <br>
-
         <span>presharedkey: </span><input v-model="iface.presharedkey" v-bind:type="showpresharedkey" placeholder="一般不用输入">
         <button v-on:click="show('showpresharedkey', showpresharedkey)">显示预共享密钥</button>
         <br>
 
-        <span>Server allowed-ips: </span><input v-model="iface.allowedips_s" type="text" placeholder="一般不填">
+        <!--
+        <span>Address</span><input v-model="iface.address" placeholder="Wireguard 使用的ip或域名">
+        <br>
+
+        <span>listenport: </span><input v-model="iface.listenport" type="text" placeholder="端口(留空自动生成)">
         <br>
 
         <span>ip: </span><input v-model="iface.allowedips" type="text" placeholder="ip地址">
@@ -65,24 +61,10 @@ export default {
             showpresharedkey: "password",
         }
     },
-    created: function(){
+    mounted: function(){
         var vm = this
 
-        eventbus.$on('event-change', function(e){
-            vm.prompt = ""
-        })
-
-        eventbus.$on("client-change", function(ifaceinfo){
-            if(ifaceinfo == null){
-                vm.op = "添加"
-            }else{
-                vm.iface = ifaceinfo
-                vm.op = "修改"
-            }
-            vm.prompt = ""
-        })
-
-        this.axios.get("/serverwg/")
+        this.axios.get("/serverwg/") // 之后添加参数，让其他只请求server id 和 接口名
         .then(function(res){
             if(res.data.code == 0){
                 vm.wgs = res.data.data
@@ -95,20 +77,24 @@ export default {
         },function(res){
             vm.prompt = "服务端口出错！"
         })
+
+        if(eventbus.e == 'client-add'){
+            vm.op = "添加"
+        }else if(eventbus.e == 'client-change'){
+            vm.serverid = eventbus.data.serverid
+            vm.iface = eventbus.data.ifaceinfo
+            vm.op = "修改"
+        }
+
     },
     methods: {
         add: function(iface){
             var vm = this
             iface.serverid = this.serverid
-            console.log(iface)
-
             this.axios.post("/clientwg/", iface)
             .then(function(res){
                 if(res.data.code == 0){
-                    eventbus.data = {"serverid": iface.serverid, "iface": res.data.data}
-                    eventbus.e = "client-change"
                     eventbus.$emit("event-change", "client-list-delete")
-                    //eventbus.$emit("client-change", res.data.data)
                 }else{
                     vm.prompt = res.data.msg
                 }
@@ -116,6 +102,20 @@ export default {
             function(res){
                 vm.prompt = "服务端出错！"
             })
+        },
+        change: function(iface){
+            var vm = this
+            this.axios.put("clientwg/", iface)
+            .then(function(res){
+                if(res.data.code == 0){
+                    eventbus.$emit("event-change", "client-list-delete")
+                }else{
+                    vm.prompt = res.data.msg
+                }
+            },function(res){
+                vm.prompt = "服务端出错！"
+            })
+            
         },
         select: function(event){
             console.log("event:", event.target.value)
