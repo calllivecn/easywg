@@ -40,20 +40,36 @@
                 </tr>
             </table>
         </div>
+        <button v-on:click="display">popwin</button>
+        <popwin  v-show="show" v-model:title="title">
+            <p>这里是弹窗内容！</p>
+        </popwin>
     </div>
 </template>
 
 <script>
 import eventbus from '../js/eventbus.js'
+import popwin from '@/components/popwin'
 export default {
     name: "client-list-delete",
     data: function(){
         return {
             prompt: null,
             datas: [],
+
+            show: false,
+            title: "弹窗title",
+            text: "提示信息",
         }
     },
+    components:{
+        popwin,
+    },
     created: function(){
+        var vm = this
+        eventbus.$on("popwin", function(yesno){
+            vm.show = yesno
+        })
     },
     mounted: function(){
         var vm = this
@@ -121,8 +137,12 @@ export default {
             },function(res){
                 vm.prompt = res.data.msg
             })
-
         },
+        display: function(){
+            console.log("popwin")
+            this.show = true
+        }
     }
 }
 </script>
+
