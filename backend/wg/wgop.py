@@ -220,7 +220,7 @@ def clientwg_add(username, wg):
 
     client["allowedips_s"] = funcs.getnet_s(client["ip"])
 
-    client["allowed-ips_c"] = server_obj.network
+    client["allowedips_c"] = server_obj.network
     
     client["privatekey"] = wgcmd.genkey()
     client["publickey"] = wgcmd.pubkey(client["privatekey"])
