@@ -31,11 +31,12 @@ def main():
     print("migrate")
     call_command("migrate")
 
+    print("startwg to back task...")
+    backtask()
+
     print("runserver")
     call_command("runserver", noreload=False, addrport="0.0.0.0:8000")
-
     print("runserver 之后")
-
 
 if __name__ == '__main__':
     main()
