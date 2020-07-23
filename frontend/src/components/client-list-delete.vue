@@ -19,8 +19,8 @@
                     <th>publickey</th>
                     <th>Allowed-ips</th>
                     <th>描述</th>
-                    <th>conf配置</th>
                     <th>删除 peer</th>
+                    <th>conf配置</th>
                 </tr>
 
                 <tr v-for="iface in data.ifaces" v-bind:key="iface.iface">
@@ -29,7 +29,6 @@
                     <td>{{ iface.publickey }}</td>
                     <td>{{ iface.allowedips }}</td>
                     <td>{{ iface.comment }}</td>
-                    <td v-on:click="conf(iface.iface)">下载配置</td>
                     <td>
                         <span v-on:click="remove(data.id, iface.id)">删除</span>
                         <!--
@@ -37,12 +36,18 @@
                         <span v-on:click="change(data.id, iface)">修改</span>
                         -->
                     </td>
+                    <td>
+                        <a v-bind:href="'/client/conf/?iface=' + iface.iface + '&format=conf'" target="_blank">下载配置</a>
+                        <span> | </span>
+                        <span v-on:click="qrcode(iface.iface)">二维码配置</span>
+                        <span> | </span>
+                        <a v-bind:href="'/client/conf/?iface=' + iface.iface + '&format=shell'">shell配置</a>
+                    </td>
                 </tr>
             </table>
         </div>
-        <button v-on:click="display">popwin</button>
         <popwin  v-show="show" v-model:title="title">
-            <p>这里是弹窗内容！</p>
+            <div v-html="text"></div>
         </popwin>
     </div>
 </template>
@@ -59,7 +64,7 @@ export default {
 
             show: false,
             title: "弹窗title",
-            text: "提示信息",
+            text: '<img></img>'
         }
     },
     components:{
@@ -120,29 +125,29 @@ export default {
             }, function(){
                 vm.prompt = "服务器出错！"
             })
-
-            
         },
-        conf: function(ifacename){
+        qrcode: function(iface){
             var vm = this
-            console.log("conf: ", ifacename)
-            this.axios.get("/client/conf/",{
-                params:{
-                    "ostype": "andriod",
-                    "format": "conf",
-                }
-            })
+            console.log("popwin")
+            // 拿 qrcode
+            this.axios.get("/client/conf/", {params: {
+                "iface": iface,
+                "format": "qrcode"
+              }})
             .then(function(res){
-                console.log(res.data)
+                vm.text = '<img src="data:image/png;base64,' + res.data + '"></img>'
+                vm.show = true
             },function(res){
                 vm.prompt = res.data.msg
             })
-        },
-        display: function(){
-            console.log("popwin")
-            this.show = true
         }
     }
 }
 </script>
 
+<style>
+    a {
+        text-decoration: none;
+        color: black;
+    }
+</style>

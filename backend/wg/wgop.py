@@ -4,6 +4,45 @@ from django.contrib.auth.models import User
 from wg.models import ClientWg, ServerWg
 from libwg import wgcmd, funcs
 
+def checkargs(request, arg, choices):
+    default = choices[0]
+    arg = request.GET.get(arg, default)
+    if arg in choices:
+        return arg
+    else:
+        return default
+
+def config(iface, request):
+    # value: shell or conf
+    ls = ("conf", "shell")
+    fmt = checkargs(request, "format", ls)
+
+    ls = ("notlinux", "andriod", "linux", "windows", "ios", "macos")
+    ostype = checkargs(request, "ostype", ls)
+
+    iface = request.GET.get("iface", "")
+
+    try:
+        iface = ClientWg.objects.get(user=request.user, iface=iface)
+    except ClientWg.DoesNotExist:
+        return funcs.reserr("指定的接口名不存在！")
+    
+    
+    conf = {}
+
+    conf["publickey"] = iface.server.publickey
+
+    if ostype in ("andriod", "windows", "ios", "macos"):
+        conf["address"] = iface.server.ip
+
+    conf["privatekey"] = iface.privatekey
+    conf["presharedkey"] = iface.presharedkey
+    conf["allowedips"] = iface.allowedips_c
+    conf["endpoint"] = iface.server.address.split("/")[0] + ":" + str(iface.server.listenport)
+    conf["persistentkeepalive"] = iface.persistentkeepalive
+
+    return conf
+
 
 def serverwg_add(wg):
     i = {}
