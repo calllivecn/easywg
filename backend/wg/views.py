@@ -1,3 +1,6 @@
+import io
+import base64
+
 from django.contrib.auth import authenticate
 from django.contrib.auth.models import User
 from django.contrib.auth.decorators import login_required
@@ -6,6 +9,8 @@ from django.views import View
 from django.http import HttpResponse, JsonResponse
 from django.db.models import Max, F
 
+import qrcode
+
 from libwg import funcs, wgcmd
 from wg import wgop
 from wg.models import ServerWg, ClientWg
@@ -13,7 +18,6 @@ from wg.startwg import startserver, stopserver
 
 def getuser(username):
     return User.objects.get(username=username)
-
 
 
 class WgServerApi(LoginRequiredMixin, View):
@@ -125,15 +129,69 @@ class WgClientApi(LoginRequiredMixin, View):
         return funcs.resok()
 
 
-def checkargs(request, arg, choices):
-    default = choices[0]
-    arg = request.GET.get(arg, default)
-    if arg in choices:
-        return arg
-    else:
-        return default
 
 class WgClientConfig(View):
+
+    def get(self, request):
+
+        iface_str = request.GET.get("iface", "")
+        if iface_str == "":
+            return funcs.reserr("需要指定接口！")
+        
+        fmt = request.GET.get("format", "")
+        if fmt == "":
+            fmt = "conf"
+        elif fmt not in ("conf", "qrcode", "shell"):
+            return funcs.reserr("format 只能是 conf 或 qrcode 或 shell")
+
+        try:
+            iface = ClientWg.objects.get(user=request.user, iface=iface_str)
+        except ClientWg.DoesNotExist:
+            return funcs.reserr("指定的接口名不存在！")
+    
+    
+        conf = {}
+        conf["publickey"] = iface.server.publickey
+        conf["address"] = iface.server.ip
+        conf["privatekey"] = iface.privatekey
+        conf["presharedkey"] = iface.presharedkey
+        conf["allowedips"] = iface.allowedips_c
+        conf["endpoint"] = iface.server.address.split("/")[0] + ":" + str(iface.server.listenport)
+        conf["persistentkeepalive"] = iface.persistentkeepalive
+
+
+        if fmt == "qrcode":
+            make_conf = funcs.render("client.conf", conf)
+            qr = qrcode.QRCode(box_size=4, border=1)
+            qr.make(fit=True)
+            qr.add_data(make_conf)            
+
+            img = qr.make_image()
+
+            with io.BytesIO() as buf:
+                img.save(buf)
+                base64img = base64.b64encode(buf.getvalue())
+        
+            return HttpResponse(base64img)
+
+        elif fmt == "conf":
+            make_conf = funcs.render("client.conf", conf)
+            res = HttpResponse(make_conf)
+            res["Content-Type"] = "application/octet-stream"
+            res['Content-Disposition'] = f'attachment; filename="{iface_str}.conf"'
+            return res
+
+        elif fmt == "shell":
+            conf["iface"] = iface_str
+            shell = funcs.render("client.shell", conf)
+            print(shell)
+            res = HttpResponse(shell)
+            res["Content-Type"] = "application/octet-stream"
+            res['Content-Disposition'] = f'attachment; filename="{iface_str}.sh"'
+            return res
+
+
+class WgClientCli(View):
 
     def dispatch(self, request, *args, **kwargs):
         username = request.META.get("HTTP_WG_USERNAME")
@@ -143,38 +201,6 @@ class WgClientConfig(View):
             return funcs.reserr("用户名或密码错误")
         else:
             return super().dispatch(request, *args, **kwargs)
-
+    
     def get(self, request):
-        # value: shell or conf
-        ls = ("conf", "shell", "qrcode")
-        fmt = checkargs(request, "format", ls)
-
-        ls = ("andriod", "linux", "windows", "ios", "macos")
-        ostype = checkargs(request, "ostype", ls)
-
-        iface = request.GET.get("iface", "")
-        if iface == "":
-            return funcs.reserr("需要指定接口！")
-
-        try:
-            iface = ClientWg.objects.get(user=self.auth, iface=iface)
-        except ClientWG.DoesNotExist:
-            return funcs.reserr("指定的接口名不存在！")
-        
-        
-        conf = {}
-
-        conf["publickey"] = iface.server.publickey
-
-        if ostype in ("andriod", "windows", "ios", "macos"):
-            conf["address"] = iface.server.ip
-
-        conf["privatekey"] = iface.privatekey
-        conf["presharedkey"] = iface.presharedkey
-        conf["allowedips"] = iface.allowedips_c
-        conf["endpoint"] = iface.server.address.split("/")[0] + ":" + str(iface.server.listenport)
-        conf["persistentkeepalive"] = iface.persistentkeepalive
-
-        make_conf = funcs.render("client.conf", conf)
-
-        return HttpResponse(make_conf)
+        pass

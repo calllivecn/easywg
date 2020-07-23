@@ -2,18 +2,18 @@
 # date 2020-02-08 22:30:48
 # author calllivecn <c-all@qq.com>
 
-EASYWG="{{ wg }}"
-SERVER_PUBKEY="{{ server_pubkey }}"
-SERVER_ADDR="{{ server_addr }}"
-CLIENT_GENKEY="{{ client_genkey }}"
-CLIENT_PSK="{{ client_psk }}"
+EASYWG="{{ iface }}"
+SERVER_PUBKEY="{{ publickey }}" 
+ENDPOINT="{{ endpoint }}"
+CLIENT_GENKEY="{{ privatekey }}"
+CLIENT_PSK="{{ presharedkey }}"
 
 #ADDR="10.1.1.20/24"
-ADDR="{{ addr }}"
+ADDR="{{ address }}"
 
 # eg: 1.1.1.0/24,10.1.1.0/24,192.168.0.0/16
 #NETS="10.1.1.0/24"
-NETS="{{ nets }}"
+NETS="{{ allowedips }}"
 
 
 ROUTE_TABLE_ID="8324"
@@ -50,7 +50,7 @@ set_wg(){
 	
 	wg set ${EASYWG} peer "${SERVER_PUBKEY}" \
 	preshared-key <(echo "${CLIENT_PSK}") \
-	endpoint "${SERVER_ADDR}" \
+	endpoint "${ENDPOINT}" \
 	persistent-keepalive 25 \
 	allowed-ips "${NETS}"
 }
