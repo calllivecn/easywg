@@ -24,3 +24,7 @@ test/unit/coverage/
 *.ntvs*
 *.njsproj
 *.sln
+
+backend/web_root/
+depend-cache/
+easywg.pyz
