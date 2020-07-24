@@ -34,6 +34,21 @@ export default {
 
   width: 95%;
 }
+input{  
+    background:none;  
+    outline:none;  
+    border:none;
+}
+select{  
+    background:none;  
+    outline:none;  
+    border:none;
+}
+textarea{  
+    background:none;  
+    outline:none;  
+    border:none;
+}
 button {
   margin: 0;
   padding: 0;
@@ -41,7 +56,7 @@ button {
   outline: none;    /* 消除默认点击蓝色边框效果 */
   background-color: transparent;
 }
-.show {
+.show_bak {
   border-style: solid;
   border-width: 1px;
   border-color: black;

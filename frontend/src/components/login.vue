@@ -3,7 +3,7 @@
         <p v-if="prompt">用户名或密码错误！</p>
         <span>用户名：</span><input v-model="username" placeholder="请输入用户名">
         <br>
-        <span>密码</span><input v-model="password" type="password" placeholder="请输入密码">
+        <span>密码：</span><input v-model="password" type="password" placeholder="请输入密码">
         <br>
         <button v-on:click="login">登录</button>
     </div>
@@ -55,6 +55,11 @@ export default {
 </script>
 
 <style>
+input{  
+    background:none;  
+    outline:none;  
+    border:none;
+}
 #login {
     position: relative;
     top: 4rem;
