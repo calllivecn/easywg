@@ -30,7 +30,7 @@
                     <td>{{ iface.allowedips }}</td>
                     <td>{{ iface.comment }}</td>
                     <td>
-                        <span v-on:click="remove(data.id, iface.id)">删除</span>
+                        <button v-on:click="remove(data.id, iface.id)">删除</button>
                         <!--
                         <span> - </span>
                         <span v-on:click="change(data.id, iface)">修改</span>
@@ -39,7 +39,7 @@
                     <td>
                         <a v-bind:href="'/client/conf/?iface=' + iface.iface + '&format=conf'" target="_blank">下载配置</a>
                         <span> | </span>
-                        <span v-on:click="qrcode(iface.iface)">二维码配置</span>
+                        <button v-on:click="qrcode(iface.iface)">二维码配置</button>
                         <span> | </span>
                         <a v-bind:href="'/client/conf/?iface=' + iface.iface + '&format=shell'">shell配置</a>
                     </td>

@@ -34,6 +34,13 @@ export default {
 
   width: 95%;
 }
+button {
+  margin: 0;
+  padding: 0;
+  border: transparent;  /* 自定义边框 */
+  outline: none;    /* 消除默认点击蓝色边框效果 */
+  background-color: transparent;
+}
 .show {
   border-style: solid;
   border-width: 1px;

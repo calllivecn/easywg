@@ -9,7 +9,7 @@ def addstartwg(ifname, privatekey, listenport, ip, peers):
     wgcmd.wg_set(ifname, privatekey, listenport)
 
     for peer in peers:
-        wgcmd.wg_peer(ifname, peer["publickey"], peer)
+        wgcmd.wg_peer(ifname, peer["pubkey"], peer)
     
 
 def exit_del(ifname):
@@ -23,10 +23,10 @@ def startserver():
         peers = []
         for boot_clientwg in boot_clientwgs:
             peer = {}
-            peer["publickey"] = boot_clientwg.publickey
-            peer["presharedkey"] = boot_clientwg.presharedkey
-            peer["allowedips_s"] = boot_clientwg.allowedips_s
-            peer["persistentkeepalive"] = boot_clientwg.persistentkeepalive
+            peer["pubkey"] = boot_clientwg.publickey
+            peer["preshared_key"] = boot_clientwg.presharedkey
+            peer["allowed_ips"] = boot_clientwg.allowedips_s
+            peer["persistent_keepalive"] = boot_clientwg.persistentkeepalive
 
             peers.append(peer)
 

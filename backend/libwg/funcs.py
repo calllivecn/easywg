@@ -78,7 +78,11 @@ def getipaddr(network):
 
 
 def getnet_s(address):
-    return str(ipaddress.IPv4Interface(address))
+    s = str(ipaddress.IPv4Interface(address)).split("/")[0]
+    addr = s + "/32"
+    print("client[allowedips_s]: ", addr)
+    return addr
+
 
 def getnet_c():
     return str()

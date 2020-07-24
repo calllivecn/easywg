@@ -24,9 +24,9 @@
                 <td>{{ iface.boot }}</td>
                 <td>{{ iface.comment }}</td>
                 <td>
-                    <span v-on:click="change(iface.iface)">修改</span>
+                    <button v-on:click="change(iface.iface)">修改</button>
                     <span> - </span>
-                    <span v-on:click="remove(iface.iface)">删除</span>
+                    <button v-on:click="remove(iface.iface)">删除</button>
                 </td>
             </tr>
         </table>
