@@ -1,4 +1,3 @@
-from wg.models import ServerWg, ClientWg
 
 from libwg import wgcmd
 
@@ -10,16 +9,16 @@ def addstartwg(ifname, privatekey, listenport, ip, peers):
     wgcmd.wg_set(ifname, privatekey, listenport)
 
     for peer in peers:
-        wgcmd.wg_peer(peer)
+        wgcmd.wg_peer(ifname, peer["publickey"], peer)
     
 
 def exit_del(ifname):
     wgcmd.del_wg(ifname)
 
 def startserver():
-
+    from wg.models import ServerWg, ClientWg
     for boot in ServerWg.objects.filter(boot=True):
-        boot_clientwgs = ClientWg.objects.filter(Server=boot)
+        boot_clientwgs = ClientWg.objects.filter(server=boot)
 
         peers = []
         for boot_clientwg in boot_clientwgs:
@@ -31,9 +30,10 @@ def startserver():
 
             peers.append(peer)
 
-        addstartwg(boot.ifname, boot.privatekey, boot.listenport, boot.ip, peers)
+        addstartwg(boot.iface, boot.privatekey, boot.listenport, boot.ip, peers)
 
 
 def stopserver():
+    from wg.models import ServerWg
     for boot in ServerWg.objects.filter(boot=True):
         exit_del(boot.ifname)

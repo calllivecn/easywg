@@ -2,6 +2,7 @@ from django import apps
 from django.apps import AppConfig
 from django.db.models.signals import post_migrate
 
+from libwg.startlock import START_LOCK
 
 DEFAULT_USER = "easywg"
 
@@ -16,9 +17,6 @@ def init_db(sender, **kwargs):
         easywg = User.objects.create_superuser(username=DEFAULT_USER, password=DEFAULT_USER)
         easywg.save()
     
-    print("执行 startserver()")
-    startwg.startserver()
-
 
     #if User.objects.exists():
     #else:
@@ -40,3 +38,6 @@ class WgConfig(AppConfig):
 
         from django.contrib.auth.models import User
         post_migrate.connect(init_db, sender=self, dispatch_uid="easywg_init_user_models")
+
+        print("release: start_lock")
+        START_LOCK.release()
