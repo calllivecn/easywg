@@ -63,6 +63,7 @@ def wg_set(ifname, private_key, listen_port=None, fwmark=0):
     with WireGuard() as wg:
         wg.set(ifname, private_key=private_key, listen_port=listen_port, fwmark=fwmark)
 
+
 def wg_peer(ifname, pubkey, peer):
     """
     **kwargs 这里都是可以选项:

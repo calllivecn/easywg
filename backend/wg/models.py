@@ -41,7 +41,9 @@ class ClientWg(models.Model):
     listenport = models.IntegerField(blank=True, null=True)
     persistentkeepalive = models.IntegerField(default=35)
 
+    # server 这边 10.1.1.1/32
     allowedips_s = models.TextField(max_length=512)
+    # client 这边 10.1.1.0/24
     allowedips_c = models.TextField(max_length=512)
 
     comment = models.TextField(max_length=128, blank=False, null=False)

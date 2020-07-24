@@ -4,8 +4,8 @@
             <span v-if="this.username != null">用户：{{ username }}</span>
         </div>
         <div id="logout">
-            <span v-if="this.username == null" v-on:click="login">点击登录</span>
-            <span v-else v-on:click="logout">点击退出</span>
+            <button v-if="this.username == null" v-on:click="login">点击登录</button>
+            <button v-else v-on:click="logout">点击退出</button>
         </div>
     </div>
 </template>

@@ -12,7 +12,6 @@ from django.core.management import (
                                     )
 
 
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'easywg.settings')
 
 from wg.startwg import startserver, stopserver
 from libwg.startlock import START_LOCK
@@ -23,6 +22,7 @@ def backtask():
         th.start()
 
 def main():
+    os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'easywg.settings')
     #settings.configure()
 
     settings.debug = False
@@ -44,9 +44,10 @@ def main():
     call_command("runserver", noreload=False, addrport="0.0.0.0:8000")
     print("runserver 之后")
 
-    print("stop server")
-    stopserver()
-
 
 if __name__ == '__main__':
-    main()
+    try:
+        main()
+    except KeyboardInterrupt:
+        print("stop server")
+        stopserver()
