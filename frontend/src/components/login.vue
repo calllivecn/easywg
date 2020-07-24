@@ -5,7 +5,7 @@
         <br>
         <span>密码</span><input v-model="password" type="password" placeholder="请输入密码">
         <br>
-        <input type="submit" @click="login" placeholder="请输入用户名" value="登录">
+        <button v-on:click="login">登录</button>
     </div>
 </template>
 
@@ -58,5 +58,12 @@ export default {
 #login {
     position: relative;
     top: 4rem;
+}
+button {
+  margin: 0;
+  padding: 0;
+  border: transparent;  /* 自定义边框 */
+  outline: none;    /* 消除默认点击蓝色边框效果 */
+  background-color: transparent;
 }
 </style>

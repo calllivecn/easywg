@@ -90,13 +90,13 @@ def wg_peer(ifname, pubkey, peer):
     
 
     # check allowed-ips 都是网络地址
-    allowed_ips = peer.get("allowed_ips")
-    if allowed_ips is not None:
-        for network in allowed_ips:
-            try:
-                ipaddress.ip_network(network)
-            except ValueError:
-                raise ValueError(f"allowed-ips: {network} 不是网络地址， 或网络地址不正确。")
+    peer["allowed_ips"] = peer.get("allowed_ips").split(",")
+    #if allowed_ips is not None:
+    #    for network in allowed_ips:
+    #        try:
+    #            ipaddress.ip_network(network)
+    #        except ValueError:
+    #            #raise ValueError(f"allowed-ips: {network} 不是网络地址， 或网络地址不正确。")
         
     peer['public_key'] = pubkey
     with WireGuard() as wg:
