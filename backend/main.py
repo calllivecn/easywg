@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Django's command-line utility for administrative tasks.""" 
 import os
-import sys
+import atexit
 from threading import Thread
 
 import django
@@ -15,6 +15,8 @@ from django.core.management import (
 
 from wg.startwg import startserver, stopserver
 from libwg.startlock import START_LOCK
+
+atexit.register(stopserver)
 
 def backtask():
     with START_LOCK:
@@ -46,8 +48,4 @@ def main():
 
 
 if __name__ == '__main__':
-    try:
-        main()
-    except KeyboardInterrupt:
-        print("stop server")
-        stopserver()
+    main()

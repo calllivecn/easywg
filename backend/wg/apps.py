@@ -36,7 +36,6 @@ class WgConfig(AppConfig):
 
         print("执行 wg.apps.WgConfig.ready()")
 
-        from django.contrib.auth.models import User
         post_migrate.connect(init_db, sender=self, dispatch_uid="easywg_init_user_models")
 
         print("release: start_lock")

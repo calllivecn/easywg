@@ -12,9 +12,6 @@ def addstartwg(ifname, privatekey, listenport, ip, peers):
         wgcmd.wg_peer(ifname, peer["pubkey"], peer)
     
 
-def exit_del(ifname):
-    wgcmd.del_wg(ifname)
-
 def startserver():
     from wg.models import ServerWg, ClientWg
     for boot in ServerWg.objects.filter(boot=True):
@@ -34,6 +31,6 @@ def startserver():
 
 
 def stopserver():
-    from wg.models import ServerWg
-    for boot in ServerWg.objects.filter(boot=True):
-        exit_del(boot.ifname)
+    print("stop server")
+    for _, iface, _ in wgcmd.list_wg():
+        wgcmd.del_wg(iface)
