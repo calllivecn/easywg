@@ -35,5 +35,4 @@ export default {
   top: 1px;
   width: 100%;
 }
-
 </style>

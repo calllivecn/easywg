@@ -4,7 +4,7 @@
         <p>{{ prompt }}</p>
         <button v-on:click="add">添加</button>
             
-        <table>
+        <table style="text-align: center;">
             <tr>
                 <th>Server 接口</th>
                 <th>Address</th>

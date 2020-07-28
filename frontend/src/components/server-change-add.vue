@@ -1,16 +1,18 @@
 <template>
     <div>
         <p>{{prompt}}</p>
-        <span>接口名：</span><input v-model="iface.iface" placeholder="留空使用默认接口名">
+        <span>接口名： </span><input v-model="iface.iface" placeholder="留空使用默认接口名">
         <br>
 
-        <span>Address</span><input v-model="iface.address" placeholder="Wireguard 使用的ip或域名">
+        <span>Address: </span><input v-model="iface.address" placeholder="Wireguard 使用的ip或域名">
+        <span>*</span>
         <br>
 
         <span>listenport: </span><input v-model="iface.listenport" type="text" placeholder="端口(留空自动生成)">
         <br>
 
         <span>network: </span><input v-model="iface.network" type="text" placeholder="网络地址">
+        <span>*</span>
         <br>
 
         <span>privatekey: </span>
@@ -27,7 +29,7 @@
         <span>是否开机启动: </span><input v-model="iface.boot" type="checkbox">
         <br>
 
-        <span>描述：</span>
+        <span>描述： </span>
         <textarea v-model="iface.comment" placeholder="添加一个简短的描述"></textarea>
         <br>
         <button v-if="op == '添加'" v-on:click="add">{{ op }}</button>

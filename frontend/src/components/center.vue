@@ -2,9 +2,9 @@
     <div id="center" class="show">
 
         <div id="leftmenu" class="show" >
-            <button v-if="superuser" v-on:click="currentComponent = 'server-list-delete'"><u>Server WireGuard</u></button>
+            <button v-if="superuser" v-on:click="currentComponent = 'server-list-delete'"><h3><u>Server WireGuard</u></h3></button>
             <br>
-            <button v-on:click="currentComponent = 'client-list-delete'"><u>My Peer WireGuard</u></button>
+            <button v-on:click="currentComponent = 'client-list-delete'"><h3><u>My Peer WireGuard</u></h3></button>
         </div>
 
         <div id="context" class="show something">
