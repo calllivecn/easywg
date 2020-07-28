@@ -104,29 +104,18 @@ class WgClientApi(LoginRequiredMixin, View):
         wg = request.META["WG_BODY"]
         return wgop.clientwg_add(username, wg)
     
-    def put(self, request):
+    def put_disable(self, request):
         username = request.user.username
         wg = request.META["WG_BODY"]
         return wgop.clientwg_change(username, wg)
 
     def delete(self, request):
         wgid = request.META["WG_BODY"].get("ifaceid", "")
+
         if wgid == "":
             return funcs.reserr("需要iface id")
-        
-        try:
-            wgid = int(wgid)
-        except Exception:
-            return funcs.reserr("iface id 是个整数")
 
-        try:
-            clientwg = ClientWg.objects.get(id=wgid)
-        except Exception:
-            return funcs.reserr(f"iface id: {wgid} 不存在")
-        
-        clientwg.delete()
-
-        return funcs.resok()
+        return wgop.clientwg_delete(request)
 
 
 
@@ -152,7 +141,7 @@ class WgClientConfig(View):
     
         conf = {}
         conf["publickey"] = iface.server.publickey
-        conf["address"] = iface.server.ip
+        conf["address"] = iface.ip
         conf["privatekey"] = iface.privatekey
         conf["presharedkey"] = iface.presharedkey
         conf["allowedips"] = iface.allowedips_c
