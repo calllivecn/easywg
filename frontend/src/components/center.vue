@@ -77,12 +77,13 @@ export default {
 }
 
 #context {
-  display: inline;
-  width: 80%;
+
+    display: inline;
+    width: 80%;
 }
 
 .something {
-  text-align: center;
+    text-align: center;
 }
 
 </style>
