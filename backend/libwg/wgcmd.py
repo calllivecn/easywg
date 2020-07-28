@@ -69,6 +69,8 @@ def wg_peer(ifname, pubkey, peer):
     **kwargs 这里都是可以选项:
     {
         'remove': false,
+
+        'public_key': 'l5NCG5NmhSB4rbFVGZACPiKEL01+tQnjD6dRHCjXtkQ=',
         'preshared_key': 'Pz8/V2FudFRvVHJ5TXlBZXJvR3Jvc3NlQmljaGU/Pz8=',
         'endpoint_addr': '8.8.8.8', # 这里只能是IP, 不能是域名.
         'endpoint_port': 9999,
@@ -99,6 +101,14 @@ def wg_peer(ifname, pubkey, peer):
     #            #raise ValueError(f"allowed-ips: {network} 不是网络地址， 或网络地址不正确。")
         
     peer['public_key'] = pubkey
+    with WireGuard() as wg:
+        wg.set(ifname, peer=peer)
+
+
+def wg_delete_peer(ifname, pubkey):
+    peer = {}
+    peer["public_key"] = pubkey
+    peer["remove"] = True
     with WireGuard() as wg:
         wg.set(ifname, peer=peer)
 
