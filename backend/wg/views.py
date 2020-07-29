@@ -115,7 +115,7 @@ class WgClientApi(LoginRequiredMixin, View):
         if wgid == "":
             return funcs.reserr("需要iface id")
 
-        return wgop.clientwg_delete(request)
+        return wgop.clientwg_delete(wgid)
 
 
 
