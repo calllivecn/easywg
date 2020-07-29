@@ -30,7 +30,7 @@
                     <td>{{ iface.allowedips }}</td>
                     <td>{{ iface.comment }}</td>
                     <td>
-                        <button v-on:click="remove(data.id, iface.id)">删除</button>
+                        <button v-on:click="remove(iface.id)">删除</button>
                         <!--
                         <span> - </span>
                         <span v-on:click="change(data.id, iface)">修改</span>
@@ -97,27 +97,14 @@ export default {
             eventbus.etype('client-add')
             eventbus.$emit("event-change", "client-change-add")
         },
-        remove: function(serverid, ifaceid){
-            console.log("删除ifaceid：",ifaceid)
+        remove: function(ifaceid){
+            console.log("删除ifaceid：", ifaceid)
             var vm = this
 
             this.axios.delete("/clientwg/", {data:{"ifaceid": ifaceid}})
             .then(function(res){
                 if(res.data.code == 0){
-
-                    for(let i in vm.datas){
-
-                        if(serverid == vm.datas[i].id){
-
-                            for(let j in vm.datas[i].ifaces){
-                                if(ifaceid == vm.datas[i].ifaces[j].id){
-                                    vm.datas[i].ifaces.splice(j, 1)
-                                    return
-                                }
-                            }
-                        }
-                    }
-
+                    vm.$emit("event-change", "client-change-add")
                 }else{
                     vm.prompt = res.data.msg
                 }

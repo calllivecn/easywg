@@ -271,25 +271,24 @@ def clientwg_add(username, wg):
     # add client peer to server
     peer = {}
     peer["preshared_key"] = client["presharedkey"]
-    peer["endpoint_addr"] = server_obj.address
-    peer["endpoint_port"] = server_obj.listenport
     peer["allowed_ips"] = client["allowedips_s"]
     peer["persistent_keepalive"] = clientwg.persistentkeepalive
     try:
-        wgcmd.wg_peer(client["iface"], client["publickey"], peer)
-    except Exception:
+        wgcmd.wg_peer(server_obj.iface, client["publickey"], peer)
+    except Exception as e:
+        print(f"peer add error: {e}")
         return funcs.reserr("服务端添加peer失败！")
     
     clientwg.save()
 
-    return funcs.res(funcs.clientwg2json(clientwg))
+    return funcs.resok()
 
-def client_delete(wgid):
+def clientwg_delete(wgid):
 
     try:
         wgid = int(wgid)
     except Exception:
-        return funcs.reserr("iface id 是个整数")
+        return funcs.reserr("iface id 应该是个整数")
 
     try:
         clientwg = ClientWg.objects.get(id=wgid)
@@ -297,11 +296,9 @@ def client_delete(wgid):
         return funcs.reserr(f"iface id: {wgid} 不存在")
 
     # delete client peer from server
-    peer = {}
-    peer["publickey"] = clientwg.publickey
     iface = clientwg.server.iface
     try:
-        wgcmd.wg_peer(iface, peer)
+        wgcmd.wg_peer(iface, clientwg.publickey)
     except Exception:
         return funcs.reserr("服务端删除peer失败！")
 
