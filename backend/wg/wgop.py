@@ -1,3 +1,5 @@
+from subprocess import CalledProcessError
+
 from django.db.models import Max
 from django.contrib.auth.models import User
 
@@ -127,10 +129,31 @@ def serverwg_add(wg):
 
     print("添加一个接口：", i)
     wgserver = ServerWg(**i)
+
+    try:
+        funcs.debug(wgcmd.add_wg, wgserver.iface, wgserver.ip)
+        funcs.debug(wgcmd.wg_set, wgserver.iface, wgserver.privatekey, wgserver.listenport)
+    except CalledProcessError:
+        return funcs.reserr(f"添加接口 {wgserver.iface} 失败!")
+
     wgserver.save()
     i["id"] = wgserver.id
     return funcs.res(i)
 
+
+def serverwg_delete(wg):
+    iface = wg.get("iface", "")
+    if iface == "":
+        return funcs.reserr("删除server接口需要接口名")
+    
+    try:
+        iface_model = ServerWg.objects.get(iface=iface)
+    except ServerWg.DoesNotExist:
+        return funcs.reserr(f"没有 {iface} server 接口")
+    
+    funcs.debug(lambda : wgcmd.del_peer(iface_model.iface))
+
+    iface_model.delete()
 
 
 def serverwg_change(wg):
@@ -274,7 +297,7 @@ def clientwg_add(username, wg):
     peer["allowed_ips"] = client["allowedips_s"]
     peer["persistent_keepalive"] = clientwg.persistentkeepalive
     try:
-        wgcmd.wg_peer(server_obj.iface, client["publickey"], peer)
+        funcs.debug(wgcmd.wg_peer, server_obj.iface, client["publickey"], peer)
     except Exception as e:
         print(f"peer add error: {e}")
         return funcs.reserr("服务端添加peer失败！")
@@ -298,8 +321,9 @@ def clientwg_delete(wgid):
     # delete client peer from server
     iface = clientwg.server.iface
     try:
-        wgcmd.wg_peer(iface, clientwg.publickey)
-    except Exception:
+        funcs.debug(wgcmd.wg_peer, iface, clientwg.publickey)
+    except Exception as e:
+        print(e)
         return funcs.reserr("服务端删除peer失败！")
 
     clientwg.delete()

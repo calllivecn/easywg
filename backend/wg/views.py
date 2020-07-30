@@ -47,19 +47,8 @@ class WgServerApi(LoginRequiredMixin, View):
         return wgop.serverwg_change(wg)
 
     def delete(self, request):
-
-        iface = request.META["WG_BODY"].get("iface", "")
-
-        if iface == "":
-            return funcs.reserr("删除server接口需要接口名")
-        
-        try:
-            iface_model = ServerWg.objects.get(iface=iface)
-        except ServerWg.DoesNotExist:
-            return funcs.reserr(f"没有 {iface} server 接口")
-
-        iface_model.delete()
-        return funcs.resok()
+        wg = request.META["WG_BODY"]
+        return wgop.serverwg_delete(wg)
 
 class WgClientApi(LoginRequiredMixin, View):
 

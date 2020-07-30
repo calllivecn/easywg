@@ -22,6 +22,12 @@ def reserr(msg, code=-1):
     return json({"code": code, "msg": msg})
 
 
+def debug(func, *args, **kwargs):
+    if settings.DEBUG:
+        print(f"debug function: {func.__name__} args: {args} kwargs: {kwargs}")
+    else:
+        func(*args, **kwargs)
+
 
 def serverwg2json(iface):
     """
