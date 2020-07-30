@@ -6,13 +6,9 @@ from libwg.funcs import json, resok, reserr
 
 class Login(View):
 
-    # logout
-    def get(self, req):
-        logout(req)
-        return resok()
-
     # login
     def post(self, req):
+        print("有使用CSRF: ", req.META.get("CSRF_COOKIE_USED"))
 
         js = req.META["WG_BODY"]
         username = js.get("un")
@@ -30,15 +26,21 @@ class Login(View):
             login(req, auth)
             return json({"code": 0, "msg": "ok", "superuser": auth.is_superuser})
 
+class Logout(View):
+    # logout
+    def get(self, req):
+        logout(req)
+        return resok()
 
-class Auth(View):
 
-    def post(self, req):
+class Logined(View):
+
+    def get(self, req):
 
         if req.user.is_authenticated:
             return resok("已登录")
         else:
-            return resok("未登录")
+            return reserr("未登录")
 
 """
 class UserManger(View):

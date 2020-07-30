@@ -39,7 +39,7 @@ INSTALLED_APPS = [
 
     "wg.apps.WgConfig",
 ]
-
+#CSRF_COOKIE_HTTPONLY = True
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
