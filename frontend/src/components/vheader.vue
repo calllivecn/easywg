@@ -1,4 +1,4 @@
-<template> 
+<template>
     <div id="userinfo" class="show">
         <div id="username">
             <span v-if="this.username != null">用户：{{ username }}</span>
@@ -12,56 +12,57 @@
 
 
 <script>
-export default {
-    name: "v-header",
-    data: function(){
-        return {
-            username: null
-        }
-    },
-    created: function(){
-
-    },
-    mounted: function(){
-        this.username = sessionStorage.username
-    },
-    methods:{
-        login: function(){
-            this.$router.push({name: "login"})
+    export default {
+        name: "v-header",
+        data: function () {
+            return {
+                username: null
+            }
         },
+        created: function () {
 
-        logout: function(){
-            var vm = this
-            this.axios.get("/accounts/logout")
-            .then(function(){
-                console.log("退出")
-                localStorage.clear()
-                vm.$router.push({name: "login"})
-            })
-            .catch(function(){
-                console.log("退出失败")
-                vm.$router.push({name: "login"})
-            })
+        },
+        mounted: function () {
+            this.username = sessionStorage.username
+        },
+        methods: {
+            login: function () {
+                this.$router.push({ name: "login" })
+            },
+
+            logout: function () {
+                var vm = this
+                this.axios.get("/accounts/logout/")
+                    .then(function (res) {
+                        if(res.data.code == 0){
+                            console.log("退出")
+                            sessionStorage.clear()
+                            vm.$router.push({ name: "login" })
+                        }
+                    },function(){
+                        console.log("退出失败, 服务端出错！")
+                    })
+
+            }
         }
     }
-}
 </script>
 
 
 <style>
-#userinfo {
-    position: absolute;
-    right: 1px;
-    height: 4rem;
-}
+    #userinfo {
+        position: absolute;
+        right: 1px;
+        height: 4rem;
+    }
 
-#username {
-    position: relative;
-    top: 1px;
-}
+    #username {
+        position: relative;
+        top: 1px;
+    }
 
-#logout {
-    position: relative;
-    bottom: 1px;
-}
+    #logout {
+        position: relative;
+        bottom: 1px;
+    }
 </style>
