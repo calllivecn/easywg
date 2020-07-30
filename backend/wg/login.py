@@ -11,12 +11,8 @@ class Login(View):
         js = req.META["WG_BODY"]
         username = js.get("un")
         password = js.get("pw")
-        
-        print("un:", username, "pw:", password)
 
         auth = authenticate(username=username, password=password)
-
-        print("auth:", auth)
 
         if auth is None:
             return reserr("用户名或密码错误")
