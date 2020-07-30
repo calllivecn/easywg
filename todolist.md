@@ -1,6 +1,6 @@
 # 接下来要做的
 
-- 用户管理还没有。(个人使用的话，考虑要不要用户管理。。。)
+- 多用户管理还没有。(个人使用的话，考虑要不要多用户。。。)
 
 - ipv6还没写完。
 
@@ -12,13 +12,15 @@
 
 - 添加日志功能
 
-- vur-router 的 mode: history 刷新问题。
+- vur-router 的 mode: history 刷新问题，
 
-- 添加 main.py 和 manager.py 模式 🆗
+    和 Uncaught (in promise) Error: Avoided redundant navigation to current location: "/".
+
+- 添加区分 main.py 和 manager.py 模式 🆗
 
 ## 现有实现的一些问题
 
-- 当前的用户登陆方式，好像还有点问题。(到时候写用户管理的时候注意下。) 🆗
+- 当前的用户登陆方式，好像还有点问题。🆗
 
 - 没有找到一个更好自动的网络和地址的分配方式。
 
