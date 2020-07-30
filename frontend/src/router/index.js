@@ -10,7 +10,7 @@ export default new Router({
   //mode: "history",
   routes: [
     {
-      path: '/',
+      path: '/easywg',
       name: 'home',
       component: home
     },
