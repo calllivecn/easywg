@@ -50,6 +50,7 @@ class WgServerApi(LoginRequiredMixin, View):
         wg = request.META["WG_BODY"]
         return wgop.serverwg_delete(wg)
 
+
 class WgClientApi(LoginRequiredMixin, View):
 
     """
@@ -104,7 +105,6 @@ class WgClientApi(LoginRequiredMixin, View):
             return funcs.reserr("需要iface id")
 
         return wgop.clientwg_delete(wgid)
-
 
 
 class WgClientConfig(View):
