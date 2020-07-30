@@ -32,6 +32,6 @@ trap clean SIGINT SIGTERM EXIT ERR
 cp -rv backend/* "$TMP"
 cp -rv frontend/dist/ "${TMP}/web_root"
 
-find "$TMP" -type d -name "__pycache__" -exec + rm -rv "{}" \; 
+find "$TMP" -type d -name "__pycache__" -exec rm -rv "{}" "+"
 
 shiv --site-packages "$TMP" --compressed -p '/usr/bin/python3 -sE' -o "${NAME}.pyz" -e "main:main"
