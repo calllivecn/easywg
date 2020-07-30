@@ -47,6 +47,7 @@ export default {
                 },
                 function(res){
                     console.log("请求出错")
+                    vm.prompt = "请求出错！"
                 }
             )
         }
