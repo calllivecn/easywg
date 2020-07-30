@@ -1,39 +1,12 @@
 <template>
   <div id="app" class="show">
-    <p>{{prompt}}</p>
     <router-view></router-view>
   </div>
 </template>
 
 <script>
-
   export default {
     name: 'App',
-    data() {
-      return {
-        prompt: "",
-      }
-    },
-    created: function () {
-      var vm = this
-      this.axios.get("/accounts/logined/")
-        .then(function (res) {
-          if (res.data.code == 0) {
-
-            sessionStorage.username = res.data.username
-            sessionStorage.superuser = res.data.superuser
-            sessionStorage.logined = '1'
-
-            vm.$router.push({ name: "home" })
-            console.log("路由跳转： name->home")
-          } else {
-            vm.$router.push({ path: "/login" })
-            console.log("路由跳转： /login")
-          }
-        }, function () {
-          vm.prompt = "服务器出错！"
-        })
-    },
   }
 </script>
 
