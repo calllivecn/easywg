@@ -3,13 +3,13 @@
 # date 2020-06-19 09:22:27
 # author calllivecn <c-all@qq.com>
 
-
+from django.views.decorators.csrf import csrf_exempt
 from django.urls import path
 
-from wg.authuser import Auth, Login
+from wg.authuser import Logined, Login, Logout
 
 urlpatterns = [
-    path("login/", Login.as_view()),
-    path("logout/", Login.as_view()),
-    path("auth/", Auth.as_view()),
+    path("logined/", Logined.as_view()),
+    path("login/", csrf_exempt(Login.as_view())),
+    path("logout/", Logout.as_view()),
 ]

@@ -14,7 +14,6 @@ import qrcode
 from libwg import funcs, wgcmd
 from wg import wgop
 from wg.models import ServerWg, ClientWg
-from wg.startwg import startserver, stopserver
 
 def getuser(username):
     return User.objects.get(username=username)

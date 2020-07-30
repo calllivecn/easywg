@@ -20,16 +20,14 @@ export default {
         }
     },
     created: function(){
-        if(sessionStorage.logined != '1'){
-            this.$router.push({path: "/login"})
-        }
+
     },
     mounted: function(){
         this.username = sessionStorage.username
     },
     methods:{
         login: function(){
-            this.$router.push({path: "/login"})
+            this.$router.push({name: "login"})
         },
 
         logout: function(){
