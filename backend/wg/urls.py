@@ -6,7 +6,7 @@
 from django.views.decorators.csrf import csrf_exempt
 from django.urls import path
 
-from wg.authuser import Logined, Login, Logout
+from wg.login import Logined, Login, Logout
 
 urlpatterns = [
     path("logined/", Logined.as_view()),

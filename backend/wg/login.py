@@ -8,8 +8,6 @@ class Login(View):
 
     # login
     def post(self, req):
-        print("有使用CSRF: ", req.META.get("CSRF_COOKIE_USED"))
-
         js = req.META["WG_BODY"]
         username = js.get("un")
         password = js.get("pw")
