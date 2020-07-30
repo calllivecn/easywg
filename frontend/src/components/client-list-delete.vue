@@ -104,7 +104,7 @@ export default {
             this.axios.delete("/clientwg/", {data:{"ifaceid": ifaceid}})
             .then(function(res){
                 if(res.data.code == 0){
-                    vm.$emit("event-change", "client-change-add")
+                    vm.$emit("event-change", "client-list-delete")
                 }else{
                     vm.prompt = res.data.msg
                 }

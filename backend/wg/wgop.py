@@ -155,6 +155,8 @@ def serverwg_delete(wg):
 
     iface_model.delete()
 
+    return funcs.resok()
+
 
 def serverwg_change(wg):
 
@@ -321,7 +323,7 @@ def clientwg_delete(wgid):
     # delete client peer from server
     iface = clientwg.server.iface
     try:
-        funcs.debug(wgcmd.wg_peer, iface, clientwg.publickey)
+        funcs.debug(wgcmd.wg_delete_peer, iface, clientwg.publickey)
     except Exception as e:
         print(e)
         return funcs.reserr("服务端删除peer失败！")

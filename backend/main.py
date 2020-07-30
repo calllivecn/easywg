@@ -27,7 +27,7 @@ def main():
     os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'easywg.settings')
     #settings.configure()
 
-    settings.debug = False
+    settings.DEBUG = False
 
     django.setup()
 
