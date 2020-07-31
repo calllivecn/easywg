@@ -6,6 +6,8 @@
         <div id="logout">
             <button v-if="this.username == null" v-on:click="login">点击登录</button>
             <button v-else v-on:click="logout">点击退出</button>
+            <span> | </span>
+            <button v-on:click="chpassword">修改密码</button>
         </div>
     </div>
 </template>
@@ -29,7 +31,6 @@
             login: function () {
                 this.$router.push({ name: "login" })
             },
-
             logout: function () {
                 var vm = this
                 this.axios.get("/accounts/logout/")
@@ -43,6 +44,9 @@
                         console.log("退出失败, 服务端出错！")
                     })
 
+            },
+            chpassword: function(){
+                this.$router.push({name: "chpassword"})
             }
         }
     }

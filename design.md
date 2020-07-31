@@ -34,7 +34,7 @@
 
 ### 使用方式二(cli)
 
-- 通过 easywg.pyz cli 方式 或 curl 方式下载配置。
+- 通过 wg.pyz cli 方式 或 curl 方式下载配置。
 
     ```shell
     curl -H "USERNAME: $your_name" -H "PASSWORD: $your_pw" -o wg-cfg.conf \
@@ -47,19 +47,19 @@
     curl -H "USERNAME: $your_name" -H "PASSWORD: $your_pw" -o wg-cfg.sh "https://<wg-service.com>/?format=shell"
     ```
 
-### 使用方式三（easywg.pyz)
+### 使用方式三（wg.pyz)
 
 - 1
 
     ```shell
-    easywg.pyz --output-config /path/to/user1-wg1.conf --service https://<wg-service.com>/
+    wg.pyz --output-config /path/to/user1-wg1.conf --service https://<wg-service.com>/
     交互式输入用户名，密码，拿到配置。
     ```
 
 - 2
 
-    >easywg.service:
+    >wg.service:
     >
     >Type=Oneshot
     >
-    >StartExec=/usr/local/sbin/easywg.pyz --config /parh/to/user1-wg0.conf
+    >StartExec=/usr/local/sbin/wg.pyz --config /parh/to/user1-wg0.conf
