@@ -28,5 +28,8 @@ var vue = new Vue({
   el: '#app',
   router,
   components: { App },
-  template: '<App></App>'
+  template: '<App></App>',
+  mounted: function(){
+    window.vue = this
+  }
 })
