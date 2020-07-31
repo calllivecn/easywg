@@ -3,6 +3,7 @@ import Router from 'vue-router'
 
 import home from '@/components/home'
 import login from '@/components/login'
+import chpassword from '@/components/chpassword'
 
 Vue.use(Router)
 
@@ -23,5 +24,10 @@ export default new Router({
             name: "login",
             component: login
         },
+        {
+            path: "/chpassword",
+            name: "chpassword",
+            component: chpassword
+        }
     ]
 })
