@@ -6,10 +6,11 @@
 from django.views.decorators.csrf import csrf_exempt
 from django.urls import path
 
-from wg.login import Logined, Login, Logout
+from wg.login import Logined, Login, Logout, Chpassword
 
 urlpatterns = [
     path("logined/", Logined.as_view()),
     path("login/", csrf_exempt(Login.as_view())),
     path("logout/", Logout.as_view()),
+    path("chpassword/", Chpassword.as_view()),
 ]
