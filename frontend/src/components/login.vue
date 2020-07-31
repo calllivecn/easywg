@@ -16,21 +16,24 @@ export default {
         return {
             username: "",
             password: "",
-            prompt: "",
+            prompt: "初始密码：easywg",
         }
     },
     created: function(){
         var vm = this
         this.axios.get("/accounts/logined/")
             .then(function (res) {
+                console.log("res.data: --> ", + res.data)
                 if(res.data.code == 0) {
-
                     sessionStorage.username = res.data.username
                     sessionStorage.superuser = res.data.superuser
                     sessionStorage.logined = '1'
 
                     vm.$router.push({ name: "home" })
                     console.log("路由跳转： name->home")
+
+                }else if(res.data.code == 302){
+                    vm.$router.push({name: "chpassword"})
                 }
             })
     },
@@ -49,7 +52,9 @@ export default {
                         sessionStorage.logined = '1'
                         vm.$router.push({name: "home"})
                         console.log(vm.username)
-                    }else {
+                    }else if(res.data.code == 302){
+                        vm.$router.push({name: "chpassword", query:{"initpw": true}})
+                    }else{
                         vm.prompt = "用户名或密码错误！"
                     }
                 },
