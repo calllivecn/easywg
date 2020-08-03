@@ -16,7 +16,7 @@ export default {
         return {
             username: "",
             password: "",
-            prompt: "初始密码：easywg",
+            prompt: "初始用户名和密码：easywg",
         }
     },
     created: function(){
