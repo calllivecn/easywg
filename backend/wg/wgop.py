@@ -151,7 +151,7 @@ def serverwg_delete(wg):
     except ServerWg.DoesNotExist:
         return funcs.reserr(f"没有 {iface} server 接口")
     
-    funcs.debug(lambda : wgcmd.del_peer(iface_model.iface))
+    funcs.debug(lambda : wgcmd.del_wg(iface_model.iface))
 
     iface_model.delete()
 

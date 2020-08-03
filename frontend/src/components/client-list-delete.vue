@@ -137,7 +137,7 @@ export default {
                 vm.text = '<img src="data:image/png;base64,' + res.data + '"></img>'
                 vm.show = true
             },function(res){
-                vm.prompt = res.data.msg
+                vm.prompt = "服务器出错！"
             })
         }
     }

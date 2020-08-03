@@ -77,7 +77,7 @@ WSGI_APPLICATION = 'easywg.wsgi.application'
 # https://docs.djangoproject.com/en/3.0/ref/settings/#databases
 
 # add $HOME/.easywg/
-DB = os.path.expandvars("$HOME/.easywg")
+DB = os.path.expanduser("~/.easywg")
 if os.path.exists(DB) and os.path.isdir(DB):
     pass
 else:
@@ -138,3 +138,56 @@ WEB_ROOT = os.path.join(BASE_DIR, "web_root")
 STATICFILES_DIRS = [
     os.path.join(BASE_DIR, "static")
 ]
+
+
+
+# logging
+
+ENV = os.environ.get("ENV")
+
+if ENV == "DEBUG":
+    LOGGER_LEVEL = "DEBUG"
+else:
+    LOGGER_LEVEL = "INFO"
+
+# LOGGING
+LOGGING = {
+    'version' : 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'httpRequest': {
+            'format': '%(asctime)s.%(msecs)d %(levelname)s %(filename)s:%(lineno)d %(message)s',
+            'datefmt': "%H:%M:%S",
+            }
+    },
+    'handlers': {
+        #'info': {
+        #    'level': 'INFO',
+        #    'class': 'logging.handlers.TimedRotatingFileHandler',
+        #    'filename': os.path.join("..", "logs", "info.log"),
+        #    'when': "midnight",
+        #    'backupCount': 7,
+        #    'formatter': 'httpRequest',
+        #},
+        #'error': {
+        #    'level': 'ERROR',
+        #    'class': 'logging.handlers.TimedRotatingFileHandler',
+        #    'filename': os.path.join("..", "logs", "error.log"),
+        #    'when': "midnight",
+        #    'backupCount': 7,
+        #    'formatter': 'httpRequest',
+        #},
+        'console': {
+            #'level': 'INFO',
+            'class': 'logging.StreamHandler',
+            'formatter': 'httpRequest',
+        },
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['console'],
+            'level': LOGGER_LEVEL,
+            'propagate': False,
+        }
+    }
+}
