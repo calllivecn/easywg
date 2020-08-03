@@ -1,0 +1,12 @@
+[Unit]
+Description=easy WireGuard client or shell
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/hthl-wg2.sh up
+ExecStop=/usr/local/bin/hthl-wg2.sh down
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
