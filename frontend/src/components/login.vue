@@ -16,17 +16,18 @@ export default {
         return {
             username: "",
             password: "",
-            prompt: "初始用户名和密码：easywg",
+            prompt: "",
         }
     },
     created: function(){
         var vm = this
         this.axios.get("/accounts/logined/")
             .then(function (res) {
-                console.log("res.data: --> ", + res.data)
+                console.log("初始用户名： easywg 密码: easywg")
+
                 if(res.data.code == 0) {
-                    sessionStorage.username = res.data.username
-                    sessionStorage.superuser = res.data.superuser
+                    sessionStorage.username = res.data.data.username
+                    sessionStorage.superuser = res.data.data.superuser
                     sessionStorage.logined = '1'
 
                     vm.$router.push({ name: "home" })
@@ -47,11 +48,10 @@ export default {
             .then(
                 function(res){
                     if(res.data.code == 0){
-                        sessionStorage.username = vm.username
-                        sessionStorage.superuser = res.data.superuser
-                        sessionStorage.logined = '1'
+                        sessionStorage.username = res.data.data.username
+                        sessionStorage.superuser = res.data.data.superuser
+                        sessionStorage.logined = true
                         vm.$router.push({name: "home"})
-                        console.log(vm.username)
                     }else if(res.data.code == 302){
                         vm.$router.push({name: "chpassword", query:{"initpw": true}})
                     }else{

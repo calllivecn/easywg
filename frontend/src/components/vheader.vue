@@ -1,11 +1,11 @@
 <template>
     <div id="userinfo" class="show">
         <div id="username">
-            <span v-if="this.username != null">用户：{{ username }}</span>
+            <span v-if="this.username">用户：{{ username }}</span>
         </div>
         <div id="logout">
-            <button v-if="this.username == null" v-on:click="login">点击登录</button>
-            <button v-else v-on:click="logout">点击退出</button>
+            <button v-if="this.username" v-on:click="logout">点击退出</button>
+            <button v-else v-on:click="login">点击登录</button>
             <span> | </span>
             <button v-on:click="chpassword">修改密码</button>
         </div>
@@ -18,11 +18,10 @@
         name: "v-header",
         data: function () {
             return {
-                username: null
+                username: ""
             }
         },
         created: function () {
-
         },
         mounted: function () {
             this.username = sessionStorage.username
