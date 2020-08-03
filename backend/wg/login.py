@@ -39,7 +39,7 @@ class Logined(View):
 
         if not settings.DEBUG:
             if req.user.username == "easywg" and req.user.password == "easywg":
-                print("初始密码请修改。")
+                print("首次登录请修改初始密码。")
                 return json({"code": 302, "router": "/accounts/chpassword/"})
 
         if req.user.is_authenticated:

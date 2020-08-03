@@ -10,7 +10,7 @@
 
 - curl 端查看和下载客户端配置
 
-- 添加日志功能
+- 添加前后端日志功能
 
 - vur-router 的 mode: history 刷新问题，
 

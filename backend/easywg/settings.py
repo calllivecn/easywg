@@ -76,7 +76,7 @@ WSGI_APPLICATION = 'easywg.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/3.0/ref/settings/#databases
 
-# add ~/.easywg/
+# add $HOME/.easywg/
 DB = os.path.expandvars("$HOME/.easywg")
 if os.path.exists(DB) and os.path.isdir(DB):
     pass

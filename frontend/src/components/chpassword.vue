@@ -1,7 +1,7 @@
 <template>
     <div id="chpassword" class="show">
         <p>{{ prompt }}</p>
-        <span>用户名： {{ username }}</span>
+        <span>当前用户名： {{ username }}</span>
         <br>
         <span>旧密码：</span><input v-model="password1" type="password" placeholder="请输入旧密码">
         <br>
@@ -29,7 +29,7 @@ export default {
     created: function(){
         var vm = this
         if(this.$route.query.initpw){
-            this.prompt = "修改初始化密码!"
+            this.prompt = "首次登录请修改初始化密码!"
         }
         this.axios.get("/accounts/chpassword/")
             .then(function (res) {
