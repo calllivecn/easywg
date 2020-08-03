@@ -141,7 +141,7 @@ class WgClientConfig(View):
             make_conf = funcs.render("client.conf", conf)
             qr = qrcode.QRCode(box_size=4, border=1)
             qr.make(fit=True)
-            qr.add_data(make_conf)            
+            qr.add_data(make_conf)
 
             img = qr.make_image()
 
