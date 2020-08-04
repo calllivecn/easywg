@@ -1,3 +1,4 @@
+from django.conf import settings
 
 from libwg import wgcmd
 
@@ -13,24 +14,30 @@ def addstartwg(ifname, privatekey, listenport, ip, peers):
     
 
 def startserver():
-    from wg.models import ServerWg, ClientWg
-    for boot in ServerWg.objects.filter(boot=True):
-        boot_clientwgs = ClientWg.objects.filter(server=boot)
+    if settings.DEBUG:
+        pass
+    else:
+        from wg.models import ServerWg, ClientWg
+        for boot in ServerWg.objects.filter(boot=True):
+            boot_clientwgs = ClientWg.objects.filter(server=boot)
 
-        peers = []
-        for boot_clientwg in boot_clientwgs:
-            peer = {}
-            peer["pubkey"] = boot_clientwg.publickey
-            peer["preshared_key"] = boot_clientwg.presharedkey
-            peer["allowed_ips"] = boot_clientwg.allowedips_s
-            peer["persistent_keepalive"] = boot_clientwg.persistentkeepalive
+            peers = []
+            for boot_clientwg in boot_clientwgs:
+                peer = {}
+                peer["pubkey"] = boot_clientwg.publickey
+                peer["preshared_key"] = boot_clientwg.presharedkey
+                peer["allowed_ips"] = boot_clientwg.allowedips_s
+                peer["persistent_keepalive"] = boot_clientwg.persistentkeepalive
 
-            peers.append(peer)
+                peers.append(peer)
 
-        addstartwg(boot.iface, boot.privatekey, boot.listenport, boot.ip, peers)
+            addstartwg(boot.iface, boot.privatekey, boot.listenport, boot.ip, peers)
 
 
 def stopserver():
-    print("stop server")
-    for _, iface, _ in wgcmd.list_wg():
-        wgcmd.del_wg(iface)
+    if settings.DEBUG:
+        pass
+    else:
+        print("stop server")
+        for _, iface, _ in wgcmd.list_wg():
+            wgcmd.del_wg(iface)
