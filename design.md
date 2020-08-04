@@ -1,4 +1,4 @@
-# wireguard 实现虚拟局域网和路由所有流量（像VPN一样工作）
+# wireguard 实现虚拟局域网和路由所有流量 （默认用户和密码：easywg）
 
 ## Server
 
