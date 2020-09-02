@@ -1,0 +1,14 @@
+[Unit]
+Description=easy WireGuard client or shell
+After=network-online.target network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/xiaomi-wg0.sh up
+ExecStop=/usr/local/bin/xiaomi-wg0.sh down
+Restart=on-failure
+RestartSec=30s
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
