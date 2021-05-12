@@ -3,7 +3,7 @@
 # author calllivecn <c-all@qq.com>
 
 EASYWG="{{ iface }}"
-SERVER_PUBKEY="{{ publickey }}" 
+SERVER_PUBKEY="{{ publickeh }}"
 ENDPOINT="{{ endpoint }}"
 CLIENT_GENKEY="{{ privatekey }}"
 CLIENT_PSK="{{ presharedkey }}"
@@ -12,9 +12,12 @@ CLIENT_PSK="{{ presharedkey }}"
 ADDR="{{ address }}"
 
 # eg: 1.1.1.0/24,10.1.1.0/24,192.168.0.0/16
-#NETS="10.1.1.0/24"
+# vpn mode: need 0.0.0.0/0
+# NETS="0.0.0.0/0,10.1.2.0/24"
 NETS="{{ allowedips }}"
 
+# DNS="223.5.5.5 2400:3200::1"
+DNS="{{ DNS }}"
 
 ROUTE_TABLE_ID="8324"
 FWMARK="0x8324"
@@ -49,15 +52,40 @@ set_wg(){
 	wg set ${EASYWG} private-key <(echo "${CLIENT_GENKEY}")
 	
 	wg set ${EASYWG} peer "${SERVER_PUBKEY}" \
-	preshared-key <(echo "${CLIENT_PSK}") \
 	endpoint "${ENDPOINT}" \
 	persistent-keepalive 25 \
 	allowed-ips "${NETS}"
+
+	if [ "$CLIENT_PSK"x != x ];then
+		wg set ${EASYWG} peer "${SERVER_PUBKEY}" \
+			preshared-key <(echo "${CLIENT_PSK}")
+	fi
+}
+
+
+add_dns(){
+	if [ "$DNS"x != x ];then
+		resolvectl dns "${EASYWG}" $DNS
+		resolvectl status "${EASYWG}"
+	fi
+}
+
+del_dns(){
+	if [ "$DNS"x != x ];then
+		resolvectl revert "${EASYWG}"
+		resolvectl status "${EASYWG}"
+	fi
 }
 
 
 vpn(){
 	if [ "$1"x = "up"x ];then
+
+		if ip route list table "$ROUTE_TABLE_ID" |grep -q "${EASYWG}"; then
+			echo "Already in VPN mode"
+			exit 1
+		fi
+
 		wg set "${EASYWG}" fwmark "$FWMARK"
 	
 		ip route add default dev ${EASYWG} table "$ROUTE_TABLE_ID"
@@ -65,13 +93,25 @@ vpn(){
 		ip rule add not fwmark "$FWMARK" table "$ROUTE_TABLE_ID"
 	
 		ip rule add table main suppress_prefixlength 0
+
+		add_dns
 	
 	elif [ "$1"x = "down"x ];then
+
+		if ip route list table "$ROUTE_TABLE_ID" |grep -q "${EASYWG}"; then
+			:
+		else
+			echo "Not VPN mode"
+			exit 1
+		fi
+
 		ip route del default dev ${EASYWG} table "$ROUTE_TABLE_ID"
 
 		ip rule del not from all fwmark ${FWMARK}
 
 		ip rule del table main suppress_prefixlength 0
+
+		del_dns
 	fi
 }
 
@@ -94,6 +134,11 @@ main(){
 		fi
 
 	elif [ "$1" = "down" ];then
+
+		if ip route list table "$ROUTE_TABLE_ID" |grep -q "${EASYWG}"; then
+			vpn down
+		fi
+
 		del_wg
 
 	elif [ "$1" = "up" ] || [ -z "$1" ];then
