@@ -27,7 +27,7 @@ check_wg_exists(){
 
 	for wg in $(ip -br link show type wireguard |awk '{print $1}')
 	do
-		if [ "$1" = "${EASYWG}" ];then
+		if [ "$1" = "${wg}" ];then
 			return 0
 		fi
 	done
