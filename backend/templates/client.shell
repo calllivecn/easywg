@@ -87,6 +87,8 @@ vpn(){
 		fi
 
 		wg set "${EASYWG}" fwmark "$FWMARK"
+
+		wg set "${EASYWG}" peer "${SERVER_PUBKEY}" allowed-ips 0.0.0.0/0,${NETS}
 	
 		ip route add default dev ${EASYWG} table "$ROUTE_TABLE_ID"
 	
@@ -104,6 +106,8 @@ vpn(){
 			echo "Not VPN mode"
 			exit 1
 		fi
+
+		wg set "${EASYWG}" peer "${SERVER_PUBKEY}" allowed-ips ${NETS}
 
 		ip route del default dev ${EASYWG} table "$ROUTE_TABLE_ID"
 
