@@ -8,7 +8,7 @@
 
 3. 允许同一用户多次连接，组成用户的虚拟局域网。
 
-4. 为一个接口（局域网）的客户端生产配置，和分配IP/CIDR, 可以为每个接口上的用户分配static IP(添加 peer 时分配静态 IP)。
+4. 为一个接口（局域网）的客户端生产配置，和分配CIDR, 可以为每个接口上的用户分配static IP(添加 peer 时分配静态 IP)。
 
 - 需要注意的问题：
 
@@ -61,5 +61,7 @@
     >wg.service:
     >
     >Type=Oneshot
+    >
+    >RemainAfterExit=yes
     >
     >StartExec=/usr/local/sbin/wg.pyz --config /parh/to/user1-wg0.conf
