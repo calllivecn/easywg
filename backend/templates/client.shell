@@ -43,7 +43,7 @@ check_wg_exists(){
 }
 
 
-add_other_net_route(){
+add_other_wg_route(){
     for net in $(echo "${NETS//,/ }") 
     do  
         if [[ -n $(ip route show dev "$EASYWG") ]] || [[ -n $(ip route show dev "$EASYWG" match "$net") ]];then
@@ -99,7 +99,7 @@ set_wg(){
 			preshared-key <(echo "${CLIENT_PSK}")
 	fi
 
-	add_other_net_route
+	add_other_wg_route
 }
 
 
