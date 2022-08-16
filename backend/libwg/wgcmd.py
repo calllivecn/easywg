@@ -153,7 +153,7 @@ def nft(cmd):
     nft.set_json_output(1)
     rc, output, err = nft.cmd(cmd)
     if rc != 0:
-        raise NftableError(f"执行错误: {err}")
+        raise NftablesError(f"执行错误: {err}")
     return output
 
 
@@ -165,7 +165,7 @@ def add_forwarding(ifname, network):
     try:
         net = ipaddress.ip_network(network)
     except ValueError:
-        raise NftableError(f"网络地址不正确：{network}")
+        raise NftablesError(f"网络地址不正确：{network}")
 
     # nftable v0.9.3 (ubuntu 20.04) 可以不用分ip ip6。inet 是可以直接用于 nat 
     #output = nft(f"add table inet easywg")
