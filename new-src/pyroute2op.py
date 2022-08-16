@@ -13,6 +13,10 @@ from pyroute2 import (
 )
 
 
+def getifname_index(ifname):
+    with NDB() as ndb:
+        return ndb.interfaces[ifname]["index"]
+
 def ip_list_all():
     """
     return:
@@ -118,10 +122,44 @@ def gethostbyaddr(name):
     return tuple(ipv4), tuple(ipv6)
 
 
-def ip_list_wg():
+
+##################
+# route 操作
+##################
+
+# server端 只需要添加 nets 的其他路由就行。
+# 添加一个路由
+def add_route_ifname(nets, ifname):
+    with NDB() as ndb:
+        r = ndb.routes.create(dst=nets, oif=getifname_index(ifname)).commit()
+
+def add_route_via(nets, via):
+    with NDB() as ndb:
+        #r = ndb.routes.create(dst=nets, via=via).commit()
+        r = ndb.routes.create(dst=nets)
+        r.set(gateway=via)
+        #r.set(proto=2) # proto字段的定义在内核中并没有实质的意义，只是一个显示字段。RTPROT_UNSPEC表示未指定； 其他值可以查看 vim /etc/iproute2/rt_protos
+        r.commit()
+
+def del_route(nets):
+    with NDB() as ndb:
+        r = ndb.routes[nets]
+        r.remove()
+        r.commit()
+
+
+# 给client 实现的VPN mode, 才需要实现策略路由
+
+
+
+##################
+# Wireguard 操作
+##################
+
+def list_wg():
    ndb = NDB()
    ifname = ndb.interfaces.summary()
-   ifname = ifname.filter(kind="wireguard").select('index', 'ifname', 'address', 'kind')
+   ifname.filter(kind="wireguard").select('index', 'ifname', 'address', 'kind')
    return ifname.format("json")
 
 
@@ -139,13 +177,13 @@ def wg_peer(ifname, pubkey, peer):
     client 端才需要指定 server 地址(endpoint_addr)
     **kwargs 这里都是可以选项:
     {
-        'remove': false,
+        'remove': false, # 可选
 
         'public_key': 'l5NCG5NmhSB4rbFVGZACPiKEL01+tQnjD6dRHCjXtkQ=',
-        'preshared_key': 'Pz8/V2FudFRvVHJ5TXlBZXJvR3Jvc3NlQmljaGU/Pz8=',
-        'endpoint_addr': '8.8.8.8', # 这里只能是IP, 不能是域名.
-        'endpoint_port': 9999,
-        'persistent_keepalive': 25,
+        'preshared_key': 'Pz8/V2FudFRvVHJ5TXlBZXJvR3Jvc3NlQmljaGU/Pz8=', # 可选
+        'endpoint_addr': '8.8.8.8', # 这里只能是IP, 不能是域名. # 可选
+        'endpoint_port': 9999, # required only if endpoint_addr
+        'persistent_keepalive': 25, # 可选
         'allowed_ips': ['::/0'],
     }
     """
@@ -154,7 +192,6 @@ def wg_peer(ifname, pubkey, peer):
     # ipv6 也许会有问题
     addr = peer.get("endpoint_addr")
     ip = None
-
     # addr 说明需要指定对端地址
     if addr is not None:
         try:
@@ -176,13 +213,19 @@ def wg_peer(ifname, pubkey, peer):
         peer["endpoint_addr"] = ip
 
     # check allowed-ips 都是网络地址
-    peer["allowed_ips"] = peer.get("allowed_ips").split(",")
-    #if allowed_ips is not None:
-    #    for network in allowed_ips:
-    #        try:
-    #            ipaddress.ip_network(network)
-    #        except ValueError:
-    #            #raise ValueError(f"allowed-ips: {network} 不是网络地址， 或网络地址不正确。")
+    allowed_ips = peer.get("allowed_ips")
+    peer["allowed_ips"] = allowed_ips
+    if allowed_ips is not None:
+        for network in allowed_ips:
+
+           try:
+               net = ipaddress.ip_network(network)
+           except ValueError:
+               raise ValueError(f"allowed-ips: {network} 不是网络地址， 或网络地址不正确。")
+        
+        # 这个接口上的，添加其他网络
+        add_route_ifname(net, ifname)
+
         
     peer['public_key'] = pubkey
     with WireGuard() as wg:
@@ -197,10 +240,6 @@ def wg_delete_peer(ifname, pubkey):
         wg.set(ifname, peer=peer)
 
 
-def add_default_table(ifname, table_id):
-    with NDB() as ndb:
-        ndb.route("add", )
-
 
 def test():
     from pprint import pprint
@@ -209,7 +248,7 @@ def test():
     pprint(ip_list_all())
 
     print("="*10, "wg list:", "="*10)
-    pprint(ip_list_wg())
+    pprint(list_wg())
 
     print("="*10, "wg create:", "="*10)
     ip_link_add_wg("wg-test0", "10.1.3.0/24")
