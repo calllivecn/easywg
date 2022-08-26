@@ -42,7 +42,12 @@ def ip_list_all():
     ]
     """
     ndb = NDB()
-    return ndb.interfaces.summary().format("json")
+    r = (
+        ndb.interfaces.summary()
+        .select("index", "ifname", "address", "kind")
+        .format("json")
+    )
+    return r
 
 
 def ip_addr_add(ifname, CIDR):
@@ -57,14 +62,14 @@ def ip_link_add_wg(ifname, CIDR):
     with NDB() as ndb:
         dev = ndb.interfaces.create(ifname=ifname, kind="wireguard")
         dev.add_ip(CIDR)
-        dev.set("state", "up")
+        dev.set(state="up")
         dev.commit()
 
 
 def ip_link_down_wg(ifname):
     with NDB() as ndb:
         dev = ndb.interfaces[ifname]
-        dev.set("state", "down")
+        dev.set(state="down")
         dev.remove()
         dev.commit()
 
@@ -88,7 +93,13 @@ def getifname_ip(ifname):
     ]
     """
     ndb = NDB()
-    return ndb.addresses.summary().select("ifname", "address", "prefixlen").filter(ifname=ifname).format("json")
+    r = (
+        ndb.addresses.summary()
+        .select("ifname", "address", "prefixlen")
+        .filter(ifname=ifname)
+        .format("json")
+    )
+    return r
 
 
 # 测试当前网络环境能使用ipv6不
@@ -157,17 +168,21 @@ def del_route(nets):
 ##################
 
 def list_wg():
-   ndb = NDB()
-   ifname = ndb.interfaces.summary()
-   ifname.filter(kind="wireguard").select('index', 'ifname', 'address', 'kind')
-   return ifname.format("json")
+    ndb = NDB()
+    r = (
+        ndb.interfaces.summary()
+        .filter(kind="wireguard")
+        .select('index', 'ifname', 'address', 'kind')
+        .format("json")
+    )
+    return r
 
 
 def wg_fwmark(ifname, fwmark):
     with WireGuard() as wg:
         wg.set(ifname, fwmark=fwmark)
 
-def wg_set(ifname, private_key, listen_port=None, fwmark=0):
+def wg_set(ifname, private_key, listen_port=None, fwmark=None):
     with WireGuard() as wg:
         wg.set(ifname, private_key=private_key, listen_port=listen_port, fwmark=fwmark)
 
@@ -242,18 +257,18 @@ def wg_delete_peer(ifname, pubkey):
 
 
 def test():
-    from pprint import pprint
 
     print("="*10, "ip list:", "="*10)
-    pprint(ip_list_all())
+    print(ip_list_all())
 
     print("="*10, "wg list:", "="*10)
-    pprint(list_wg())
+    print(list_wg())
 
-    print("="*10, "wg create:", "="*10)
-    ip_link_add_wg("wg-test0", "10.1.3.0/24")
-    input("按回车继续。。。")
-    ip_link_down_wg("wg-test0")
+    # 需要 root
+    # print("="*10, "wg create:", "="*10)
+    # ip_link_add_wg("wg-test0", "10.1.3.0/24")
+    # input("按回车继续。。。")
+    # ip_link_down_wg("wg-test0")
 
 
 if __name__ == "__main__":

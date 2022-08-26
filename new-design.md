@@ -6,7 +6,7 @@
 
 2. 为一个接口（局域网）的客户端生产配置，和分配CIDR, 可以为每个接口上的用户分配static IP(添加 peer 时分配静态 IP)。
 
-3. 使用单向加密网络通信(使用管理密码认证管理人员)，采用C/S架构。
+3. 目前先使用示加密通信，之后使用加密网络通信(使用管理密码认证管理人员)，采用C/S架构。
 
 - 需要注意的问题：
 
@@ -32,7 +32,7 @@
 - 可以为 linux 生成 shell 配置,  配置信息可以 是环境变量。
 
     ```shell
-    export WG_USER=easywg WG_PASSWORD=<your passwword> WG_SERVER_URL=<easywg.example.cn:8324>
+    export WG_USER=<easywg> WG_PASSWORD=<your passwword> WG_SERVER_URL=<easywg.example.cn:8324>
 
     wg.pyz --shell wg0.sh <peername> # 生成直接配置WG的脚本 推荐
     wg.pyz --qr <peername> # 生成二维码配置
