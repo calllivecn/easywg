@@ -15,12 +15,13 @@ def genpsk():
     p = run("wg pskkey", stdout=PIPE, text=True)
     return p.stdout
 
-def add_wg(ifname, ip):
 
-    with IPDB() as db:
-        wg = db.create(ifname=ifname, kind="wireguard")
-        wg.add_ip(ip)
-        wg.up()
+def add_wg(ifname, CIDR):
+
+    with NDB() as ndb:
+        wg = ndb.interfaces.create(ifname=ifname, kind="wireguard")
+        wg.add_ip(CIDR)
+        wg.set(state="up")
         wg.commit()
 
 def del_wg(ifname):
