@@ -15,6 +15,26 @@
 >2) VPN模式下，客户端之间允不允许互通？这个应该允许。给个开关?
 >
 
+
+---
+
+## 管理方式
+
+- 管理peer
+
+```shell
+wg.pyz add
+wg.pyz add --allowed-ips 10.1.2.0/24 10.1.3.0/24 --keepalive 25 --endpoint mc.calllive.cc:8321
+wg.pyz update --pubkey <pubkey> --allowed-ips
+gw.pyz remove --pubkey <pubkey>
+```
+
+- 管理
+```shell
+wg.pyz interface add
+wg.pyz interface
+```
+
 ---
 
 ## Client 只需要实现 linux 端就可以, 其他平台官方有[WireGuard客户端下载地址](https://www.wireguard.com/install/)
