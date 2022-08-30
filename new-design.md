@@ -4,7 +4,7 @@
 
 1. 管理多个wg接口
 
-2. 为一个接口（局域网）的客户端生产配置，和分配CIDR, 可以为每个接口上的用户分配static IP(添加 peer 时分配静态 IP)。
+2. 为一个接口（局域网）的客户端生产配置，和分配CIDR, 可以为每个接口上的用户自动(也可以手动)分配static IP(添加 peer 时分配静态 IP)。
 
 3. 目前先使用示加密通信，之后使用加密网络通信(使用管理密码认证管理人员)，采用C/S架构。
 
@@ -20,19 +20,22 @@
 
 ## 管理方式
 
+- 管理 interface
+
+```shell
+wg.pyz --interface <iface> --list
+wg.pyz --interface <iface> --add [--]
+wg.pyz --interface <iface> --remove
+wg.pyz --interface <iface> --modify
+```
+
 - 管理peer
 
 ```shell
 wg.pyz add
-wg.pyz add --allowed-ips 10.1.2.0/24 10.1.3.0/24 --keepalive 25 --endpoint mc.calllive.cc:8321
-wg.pyz update --pubkey <pubkey> --allowed-ips
+wg.pyz add [--allowedips <10.1.2.0/24> [10.1.3.0/24]] [--ip 10.1.2.10/24] [--endpoint wg.example.com:8324] [--keepalive 25] [--boot]
+wg.pyz modify --pubkey <pubkey> --allowed-ips
 gw.pyz remove --pubkey <pubkey>
-```
-
-- 管理
-```shell
-wg.pyz interface add
-wg.pyz interface
 ```
 
 ---
