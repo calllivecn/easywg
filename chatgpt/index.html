@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>WireGuard配置管理工具</title>
+</head>
+<body>
+    <h1>WireGuard配置管理工具</h1>
+    <div id="config-list"></div>
+    <form id="add-config-form">
+        <h2>添加配置</h2>
+        <div>
+            <label>配置名称：</label>
+            <input type="text" name="name" required>
+        </div>
+        <div>
+            <label>私钥：</label>
+            <input type="text" name="private_key" required>
+        </div>
+        <div>
+            <label>公钥：</label>
+            <input type="text" name="public_key" required>
+        </div>
+        <div>
+            <label>IP地址：</label>
+            <input type="text" name="address" required>
+        </div>
+        <div>
+            <button type="submit">添加</button>
+        </div>
+    </form>
+    <form id="delete-config-form">
+        <h2>删除配置</h2>
+        <div>
+            <label>配置名称：</label>
+            <select name="name" required></select>
+        </div>
+        <div>
+            <button type="submit">删除</button>
+        </div>
+    </form>
+    <script>
+        const configList = document.getElementById('config-list');
+        const addConfigForm = document.getElementById('add-config-form');
+        const deleteConfigForm = document.getElementById('delete-config-form');
+        const configSelect = deleteConfigForm.querySelector('select');
+
+        // 获取配置列表
+        fetch('/api/list_configs')
+            .then(response => response.json())
+            .then(result => {
+                if (result.status === 'success') {
+                    result.data.forEach(config => {
+                        const card = document.createElement('div');
+                        card.classList.add('card');
+                        card.innerHTML = `
+                            <h3>${config.name}</h3>
+                            <ul>
+                                <li><strong>私钥：</strong>${config.private_key}</li>
+                                <li><strong>公钥：</strong>${config.public_key}</li>
+                                <li><strong>IP地址：</strong>${config.address}</li>
+                            </ul>
+                        `;
+                        configList.appendChild(card);
+
+                        // 添加选项到下拉框
+                        const option = document.createElement('option');
+                        option.value = config.name;
+                        option.innerText = config.name;
+                        configSelect.appendChild(option);
+                    });
+                } else {
+                    alert(result.message);
+                }
+            });
+
+        // 添加配置
+        addConfigForm.addEventListener('submit', event => {
+            event.preventDefault();
+            const formData = new FormData(addConfigForm);
+            fetch('/api/add_config', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(Object.fromEntries(formData))
+            })
+            .then(response => response.json())
+            .then(result => {
+                if (result.status === 'success') {
+                    location.reload();
+                } else {
+                    alert(result.message);
+                }
+            });
+        });
+
+        // 删除配置
+        deleteConfigForm.addEventListener('submit', event => {
+            event.preventDefault();
+            const formData = new FormData(deleteConfigForm);
+            fetch('/api/delete_config', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(Object.fromEntries(formData))
+            })
+            .then(response => response.json())
+            .then(result => {
+            if (result.status === 'success') {
+                location.reload();
+            } else {
+                alert(result.message);
+            }
+        });
+    });
+</script>
+</body>
+</html>
+
+<!--
+在这个示例中，我们使用了原生的JavaScript代码来处理页面中的事件和与后端API的交互。具体来说，我们使用了以下JavaScript方法：
+
+fetch() - 发送HTTP请求并返回响应对象。
+addEventListener() - 在DOM元素上添加事件监听器。
+querySelector() - 返回与指定选择器匹配的第一个元素。
+createElement() - 创建新的HTML元素。
+appendChild() - 在指定的元素的子元素列表末尾添加一个新的子元素。
+innerHTML - 设置或返回元素的HTML内容。
+value - 设置或返回表单元素的值。
+在这个示例中，我们使用了这些方法来完成以下任务：
+
+通过调用后端API获取配置列表，并将其呈现在页面上。
+通过提交表单来添加新配置，并将其发送到后端API。
+通过提交表单来删除现有配置，并将其发送到后端API。
+当然，这只是一个示例，实际应用中可能需要更复杂的逻辑和更多的交互。不过，通过这个示例，您可以看到使用原生JavaScript编写Web应用程序的基本思路。
+-->
