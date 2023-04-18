@@ -1,7 +1,6 @@
-
 import os
 import json
-from http.server import HTTPServer, BaseHTTPRequestHandler
+from http.server import HTTPServer, BaseHTTPRequestHandler, SimpleHTTPRequestHandler
 
 configs = {
     'config1': {
@@ -25,6 +24,7 @@ class RequestHandler(BaseHTTPRequestHandler):
             self.send_header('Content-Type', 'application/json')
             self.end_headers()
             self.wfile.write(json.dumps(list(configs.keys())).encode('utf-8'))
+
         elif self.path.startswith('/configs/'):
             config_name = self.path.split('/')[-1]
             if config_name in configs:
@@ -35,7 +35,18 @@ class RequestHandler(BaseHTTPRequestHandler):
             else:
                 self.send_error(404)
         else:
-            self.send_error(404)
+            # Serve static files
+            root = os.path.join(os.path.dirname(__file__), 'static')
+            print(root)
+            path = os.path.normpath(self.path)
+            if os.path.isfile(os.path.join(root, path.lstrip('/'))):
+                self.path = path
+                SimpleHTTPRequestHandler.do_GET(self)
+                # SHH = SimpleHTTPRequestHandler(self.request, self.client_address, self)
+                # SHH.path = path
+                # SHH.do_GET()
+            else:
+                self.send_error(404)
 
     def do_PUT(self):
         if self.path.startswith('/configs/'):
