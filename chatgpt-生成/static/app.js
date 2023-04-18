@@ -17,31 +17,32 @@ function updateConfigList() {
     configItemEl.addEventListener('click', () => {
       setActiveConfig(config)
     })
-    configListEl.appendChild(configItemEl)}
+    configListEl.appendChild(configItemEl)
+  }
 }
 
 function addConfig() {
-const name = prompt('Enter the name of the new configuration:')
-if (name && !configs.includes(name)) {
-configs.push(name)
-updateConfigList()
-}
+  const name = prompt('Enter the name of the new configuration:')
+  if (name && !configs.includes(name)) {
+    configs.push(name)
+    updateConfigList()
+  }
 }
 
 function deleteConfig() {
-if (activeConfig) {
-const index = configs.indexOf(activeConfig)
-if (index !== -1) {
-configs.splice(index, 1)
-setActiveConfig(null)
-updateConfigList()
-}
-}
+  if (activeConfig) {
+    const index = configs.indexOf(activeConfig)
+    if (index !== -1) {
+      configs.splice(index, 1)
+      setActiveConfig(null)
+      updateConfigList()
+    }
+  }
 }
 
 function setActiveConfig(config) {
-activeConfig = config
-updateConfigList()
+  activeConfig = config
+  updateConfigList()
 }
 
 addConfigBtnEl.addEventListener('click', addConfig)
