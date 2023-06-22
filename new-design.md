@@ -1,4 +1,4 @@
-# wireguard 实现虚拟局域网和路由所有流量
+# wireguard 实现虚拟局域网和路由所有流量(VPN模式)
 
 ## Server
 
