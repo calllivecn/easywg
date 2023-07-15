@@ -45,11 +45,11 @@ def del_wg(ifname):
             iface.remove()
 
 def list_wg():
-    ndb = NDB()
     if_wgs = []
-    for _, _, index, ifname, mac, _, typ in ndb.interfaces.summary():
-        if typ == "wireguard":
-            if_wgs.append((index, ifname, typ))
+    with NDB() as ndb:
+        for _, _, index, ifname, mac, _, typ in ndb.interfaces.summary():
+            if typ == "wireguard":
+                if_wgs.append((index, ifname, typ))
 
     return if_wgs
 

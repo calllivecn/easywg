@@ -1,5 +1,6 @@
 #!/bin/bash
 # date 2020-02-08 22:30:48
+# update 2023-07-15 1:26:28
 # author calllivecn <c-all@qq.com>
 
 EASYWG="{{ iface }}"
@@ -121,7 +122,7 @@ del_dns(){
 add_table_id(){
 	while [[ -n $(ip -4 route list table $ROUTE_TABLE_ID 2>/dev/null) || -n $(ip -6 route list table $ROUTE_TABLE_ID 2>/dev/null) ]];
 	do
-		$ROUTE_TABLE_ID=$[ROUTE_TABLE_ID + 1]
+		ROUTE_TABLE_ID=$[ROUTE_TABLE_ID + 1]
 		if [ $ROUTE_TABLE_ID -gt 9999 ];then
 			echo "route_table_id -gt 9999" >&2
 			exit 1
