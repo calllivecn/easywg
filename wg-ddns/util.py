@@ -5,6 +5,7 @@
 # author calllivecn <c-all@qq.com>
 
 import os
+import copy
 import socket
 import ipaddress
 from subprocess import run, PIPE
@@ -235,7 +236,7 @@ def wg_set(ifname, private_key, listen_port=None, fwmark=None):
         wg.set(ifname, private_key=private_key, listen_port=listen_port, fwmark=fwmark)
 
 
-def wg_peer(ifname, peer):
+def wg_peer(ifname, peer_bak):
     """
     client 端才需要指定 server 地址(endpoint_addr)
     **kwargs 这里都是可以选项:
@@ -251,6 +252,8 @@ def wg_peer(ifname, peer):
     }
     """
 
+    peer = copy.deepcopy(peer_bak)
+
     # 如果 endpoint_addr 是域名, 需要解析成ip
     # ipv6 也许会有问题
     addr = peer.get("endpoint_addr")
@@ -262,7 +265,6 @@ def wg_peer(ifname, peer):
         except ValueError:
             # 说明是域名, 需要解析成IP才能给WG使用
             ipv4s, ipv6s = get_ip_by_addr(addr)
-            print(f"{ipv4s=}, {ipv6s=}")
 
             # 优先使用ipv6, 测试网络可达性。(背景是只有ipv4的机器也可能解析出ipv6地址，需要测试网络可达性)
             for ipv6 in ipv6s:
@@ -292,11 +294,8 @@ def wg_peer(ifname, peer):
                cidr = ndb.routes.get(network)
                if cidr is None:
                    add_route_ifname(net.compressed, ifname)
-               else:
-                   print(f"已经有 {network=}")
 
         
-    # peer['public_key'] = pubkey
     with WireGuard() as wg:
         wg.set(ifname, peer=peer)
 
@@ -309,10 +308,18 @@ def wg_delete_peer(ifname, pubkey):
         wg.set(ifname, peer=peer)
 
 
-def wg_peer_option(peer_pubkey, option, value):
+def wg_peer_option(ifname, peer_pubkey, opt_val: dict):
     """
-    eg: option="endpoint_addr", value="1.2.3.4"
+    eg: opt_val {"endpoint_addr": "1.2.3.4"}
+    每次重新设置的时候都得加上allowed_ips ? 那之后其他参数是不是也要添加？
+    是的每次，重设置都要添加是所有必须的参数
     """
+    opt_val["public_key"] = peer_pubkey
+    print(f"{opt_val=}")
+    with WireGuard() as wg:
+        wg.set(ifname, peer=opt_val)
+
+    
 
 
 ###########
