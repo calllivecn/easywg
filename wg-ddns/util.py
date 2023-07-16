@@ -7,8 +7,13 @@
 import os
 import copy
 import socket
+import logging
 import ipaddress
-from subprocess import run, PIPE
+from subprocess import (
+    run,
+    PIPE,
+    CalledProcessError
+)
 
 # from nftables import Nftables
 
@@ -16,6 +21,56 @@ from pyroute2 import (
     NDB,
     WireGuard,
 )
+
+
+logger = logging.getLogger("wg-pyz")
+
+
+##################
+# dns 直接查询，避免系统缓存的影响
+##################
+
+def dnsquery(domainname, dnsserver):
+    """
+    只需要处理返回一个ip的情况
+    return: [] or ["ip1"]
+    """
+
+    # ipv4
+    try:
+        p = run(["dig", "+short", f"@{dnsserver}", domainname, "A"], stdout=PIPE, text=True, check=True)
+    except CalledProcessError as e:
+        logger.warning(f"查询 {domainname} 域名异常: {e}")
+        ipv4 = []
+    else:
+        ipv4 = p.stdout.strip().split()
+
+    # ipv6
+    try:
+        p = run(["dig", "+short", f"@{dnsserver}", domainname, "AAAA"], stdout=PIPE, text=True, check=True)
+    except CalledProcessError as e:
+        logger.warning(f"查询 {domainname} 域名异常: {e}")
+        ipv6 = []
+    
+    else:
+        ipv6 = p.stdout.strip().split()
+
+
+    ip  = ipv4 + ipv6
+    """
+    if len(ip) != 1:
+        logger.warning(f"在些应用场景下，域名只能对应一个ip。ipv4 + ipv6 也只需要一个")
+
+    return ip[0]
+    """
+    if len(ip) == 0:
+        logger.warning(f"没有查询到 {domainname} IP")
+        return []
+    elif len(ip) > 1:
+        logger.warning(f"没有查询到多个IP, 这个场景下不应该, 请删除多余的记录只保留一个。")
+        return []
+
+    return ip[0]
 
 
 ##################
