@@ -6,6 +6,7 @@
 import sys
 import time
 import json
+import atexit
 import logging
 import subprocess
 from pathlib import Path
@@ -49,8 +50,10 @@ def check_alive(server_wg_ip):
                 logger.warning(f"{server_wg_ip} 线路断开了...")
                 return
 
+        if failed_count > 0:
+            logger.info(f"{server_wg_ip} 检测恢复...")
+
         failed_count = 0
-        logger.info(f"{server_wg_ip} 检测恢复...")
         time.sleep(1)
     
 
@@ -66,6 +69,8 @@ def main():
     ifname = conf["ifname"]
     wg_name = ifname["interface"]
     util.ip_link_add_wg(wg_name)
+
+    atexit.register(lambda :util.ip_link_del_wg(wg_name))
     
     for CIDR in ifname["address"]:
         util.ip_addr_add(wg_name, CIDR)
@@ -76,8 +81,12 @@ def main():
     
 
     while True:
-        server_addr = conf["peers"][0]["endpoint"]
+        server_addr = conf["peers"][0]["endpoint_addr"]
+
+        check_alive(conf["server_wg_ip"])
+
         logger.info(f"重新解析域名，并更新wireguard。")
+
         # 需要更新域名指向
         ipv4, ipv6 = util.get_ip_by_addr(server_addr)
 
@@ -86,11 +95,11 @@ def main():
         # 优先使用ipv6
         if len(ipv6) > 0:
             logger.info(f"使用域名：{ipv6[0]}")
-            util.wg_peer_option("endpoint", ipv6[0])
+            util.wg_peer_option("endpoint_addr", ipv6[0])
 
         elif len(ipv4) > 0:
             logger.info(f"使用域名：{ipv4[0]}")
-            util.wg_peer_option("endpoint", ipv4[0])
+            util.wg_peer_option("endpoint_addr", ipv4[0])
         else:
             logger.waring("没有解析到域名！")
 
