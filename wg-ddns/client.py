@@ -6,11 +6,27 @@
 import sys
 import time
 import json
+import logging
 import subprocess
 from pathlib import Path
 
 
 import util
+
+def getlogger(level=logging.INFO):
+    logger = logging.getLogger("wg-pyz")
+    formatter = logging.Formatter("%(asctime)s %(levelname)s %(filename)s:%(funcName)s:%(lineno)d %(message)s", datefmt="%Y-%m-%d-%H:%M:%S")
+    consoleHandler = logging.StreamHandler(stream=sys.stdout)
+    #logger.setLevel(logging.DEBUG)
+
+    consoleHandler.setFormatter(formatter)
+
+    # consoleHandler.setLevel(logging.DEBUG)
+    logger.addHandler(consoleHandler)
+    logger.setLevel(level)
+    return logger
+
+logger = getlogger()
 
 
 # 加载配置文件
@@ -27,11 +43,14 @@ def check_alive(server_wg_ip):
         try:
             subprocess.run(f"ping -W 5 -c 1 {server_wg_ip}".split(), stdout=subprocess.PIPE, check=True)
         except subprocess.CalledProcessError:
+            logger.info(f"{server_wg_ip} 检测好像断开了...")
             failed_count += 1
             if failed_count >= 3:
+                logger.warning(f"{server_wg_ip} 线路断开了...")
                 return
 
         failed_count = 0
+        logger.info(f"{server_wg_ip} 检测恢复...")
         time.sleep(1)
     
 
@@ -57,9 +76,8 @@ def main():
     
 
     while True:
-        check_alive(conf["server_wg_ip"])
-
         server_addr = conf["peers"][0]["endpoint"]
+        logger.info(f"重新解析域名，并更新wireguard。")
         # 需要更新域名指向
         ipv4, ipv6 = util.get_ip_by_addr(server_addr)
 
@@ -67,13 +85,16 @@ def main():
 
         # 优先使用ipv6
         if len(ipv6) > 0:
-            util.wg_peer_option("endpoint", ipv6.pop())
+            logger.info(f"使用域名：{ipv6[0]}")
+            util.wg_peer_option("endpoint", ipv6[0])
 
         elif len(ipv4) > 0:
-            util.wg_peer_option("endpoint", ipv4.pop())
+            logger.info(f"使用域名：{ipv4[0]}")
+            util.wg_peer_option("endpoint", ipv4[0])
         else:
-            print("没有解析到域名！")
+            logger.waring("没有解析到域名！")
 
 
 if __name__ == "__main__":            
+    logger.setLevel(logging.DEBUG)
     main()
