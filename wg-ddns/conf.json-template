@@ -3,6 +3,7 @@
     "check_timeout": 5,
     "check_fail_count": 3,
     "server_wg_ip": "10.1.1.1",
+    "ddns_server": "223.5.5.5",
 
     "ifname": {
 

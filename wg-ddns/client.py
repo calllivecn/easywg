@@ -6,6 +6,7 @@
 import sys
 import time
 import json
+import copy
 import atexit
 import logging
 import subprocess
@@ -70,6 +71,10 @@ def main():
     # 配置wg
     ifname = conf["ifname"]
     wg_name = ifname["interface"]
+
+    # ddns server 
+    ddns_server = conf["ddns_server"]
+
     util.ip_link_add_wg(wg_name)
 
 
@@ -80,41 +85,49 @@ def main():
 
     util.wg_set(wg_name, ifname["private_key"], listen_port=ifname.get("listen_port"), fwmark=ifname.get("fwmark"))
 
-    for peer in conf["peers"]:
-        util.wg_peer(wg_name, peer)
+    for peer_bak in conf["peers"]:
+
+        peer = copy.deepcopy(peer_bak)
+        
+        dns = peer["endpoint_addr"]
+        addr = util.dnsquery(dns, ddns_server)
+        if len(addr) == 0:
+            logger.warning(f"没有查询到 {server_addr} IP, 可能出错了。请检查")
+            continue
+
+
+        peer["endpoint_addr"] = addr
+        
+        logger.debug(f"{peer=}")
+        with util.WireGuard() as wg:
+            wg.set(wg_name, peer=peer)
     
 
     while True:
-        server_addr = conf["peers"][0]["endpoint_addr"]
-        public_key = conf["peers"][0]["public_key"]
+        # 目前测试阶段，只先做一个peer端的处理
+        peer = copy.deepcopy(conf["peers"][0])
+        server_addr = peer["endpoint_addr"]
+        public_key = peer["public_key"]
 
         check_alive(conf["server_wg_ip"])
 
-        logger.info(f"重新解析域名，并更新wireguard。")
-
         logger.debug(f"{server_addr=} {public_key=}")
 
-        util.wg_peer(wg_name, conf["peers"][0])
+        logger.info(f"重新解析域名，并更新wireguard。")
+
+        addr = util.dnsquery(server_addr, ddns_server)
+        if len(addr) == 0:
+            logger.warning(f"没有查询到 {server_addr} IP, 可能出错了。请检查")
+            # sys.exit(1)
+            return
         
-        """
-        # 需要更新域名指向
-        ipv4, ipv6 = util.get_ip_by_addr(server_addr)
-        logger.debug(f"{ipv4=} {ipv6=}")
+        logger.info(f"新地址: {addr}")
+        peer["endpoint_addr"] = addr
+        logger.debug(f"{peer=}")
 
-        # 缓存下，方便检测，域名有没有更新, 不用，压力给到 check_alive()
-
-        # 优先使用ipv6
-        if len(ipv6) > 0:
-            logger.info(f"使用新地址：{ipv6[0]}")
-            util.wg_peer_option(wg_name, public_key, {"endpoint_addr": ipv6[0]})
-
-        elif len(ipv4) > 0:
-            logger.info(f"使用地址：{ipv4[0]}")
-            util.wg_peer_option(wg_name, public_key, {"endpoint_addr": ipv4[0]})
-        else:
-            logger.warning("没有解析到地址！")
-
-        """
+        with util.WireGuard() as wg:
+            wg.set(wg_name, peer=peer)
+        
 
 if __name__ == "__main__":            
     # 怎么没用 ？ logger.setLevel(logging.DEBUG)
