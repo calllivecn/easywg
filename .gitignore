@@ -27,4 +27,5 @@ test/unit/coverage/
 
 backend/web_root/
 depend-cache/
-easywg.pyz
+*.pyz
+*.json
