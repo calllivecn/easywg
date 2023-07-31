@@ -1,1 +1,2 @@
 pyroute2==0.7.2
+tomli >= 1.1.0;python_version < "3.11"
