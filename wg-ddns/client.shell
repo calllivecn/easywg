@@ -1,0 +1,306 @@
+#!/bin/bash
+# date 2020-02-08 22:30:48
+# author calllivecn <c-all@qq.com>
+
+EASYWG="{{ iface }}"
+SERVER_PUBKEY="{{ publickeh }}"
+ENDPOINT="{{ endpoint }}"
+CLIENT_GENKEY="{{ privatekey }}"
+CLIENT_PSK="{{ presharedkey }}"
+
+#ADDR="10.1.1.20/24"
+ADDR="{{ address }}"
+ADDR6="{{ address6 }}"
+
+# eg: 1.1.1.0/24,10.1.1.0/24,192.168.0.0/16
+# NETS="0.0.0.0/0,10.1.2.0/24"
+NETS="0.0.0.0/0"
+NETS6="::/0"
+
+# DNS="223.5.5.5 2400:3200::1"
+DNS="{{ dns }}"
+
+# MTU=1420
+MTU="{{ MTU }}"
+
+
+# ~~常量配置不要修改~~  这个暂时还是使用配置的
+ROUTE_TABLE_ID="8123"
+FWMARK="0x8123"
+
+check_wg_exists(){
+
+	#for wg in $(ip -br link show type wireguard |awk '{print $1}')
+	#do
+	#	if [ "$1" = "${wg}" ];then
+	#		return 0
+	#	fi
+	#done
+
+
+	if sudo wg show "${EASYWG}" >/dev/null 2>&1 ;then
+		return 0
+	else
+		return 1
+	fi
+
+}
+
+
+add_other_net_route(){
+    for net in $(echo "${NETS//,/ }") 
+    do  
+		if [ "$net" = "0.0.0.0/0" ];then
+			continue
+		fi
+
+        if [[ -n $(ip route show dev "$EASYWG") ]] || [[ -n $(ip route show dev "$EASYWG" match "$net") ]];then
+            #echo "网段: $net 有了"
+			:
+        else
+            #echo "添加新网段: $net"
+            ip route add $net dev "$EASYWG"
+        fi
+    done
+
+	if [ "$NETS6"x != x ];then
+		for net in $(echo "${NETS6//,/ }") 
+    	do  
+			if [ "$net" = "::/0" ];then
+				continue
+			fi
+
+    	    if [[ -n $(ip -6 route show dev "$EASYWG") ]] || [[ -n $(ip -6 route show dev "$EASYWG" match "$net") ]];then
+    	        #echo "网段: $net 有了"
+				:
+    	    else
+    	        #echo "添加新网段: $net"
+    	        ip -6 route add $net dev "$EASYWG"
+    	    fi
+    	done
+
+	fi
+}
+
+# 这个好像不需要，删除 $EASYWG 时，相关的路由也自动没有了。
+del_other_net_route(){
+	for net in $(echo "${NETS//,/ }") 
+	do  
+		if [[ -n $(ip route show dev "$EASYWG" match "$net") ]];then
+			#echo "网段: $net 有了"
+			ip route del dev "$EASYWG" "$net"
+		else
+			#echo "添加新网段: $net"
+			ip route add "$net" dev "$EASYWG"
+		fi
+	done
+
+	if [ "$NETS6"x != x ];then
+		for net in $(echo "${NETS6//,/ }") 
+		do  
+			if [[ -n $(ip -6 route show dev "$EASYWG" match "$net") ]];then
+				#echo "网段: $net 有了"
+				ip -6 route del dev "$EASYWG" "$net"
+			else
+				#echo "添加新网段: $net"
+				ip -6 route add "$net" dev "$EASYWG"
+			fi
+		done
+
+	fi
+}
+
+
+add_wg(){
+	ip link add dev "${EASYWG}" type wireguard
+	sleep 0.1
+	ip addr add dev "${EASYWG}" "${ADDR}"
+
+	if [ "$ADDR6"x != x ];then
+		ip addr add dev "${EASYWG}" "${ADDR6}"
+	fi
+
+	if [ "$MTU"x != x ];then
+		ip link set mtu "$MTU" dev "${EASYWG}"
+	fi
+	
+	ip link set "${EASYWG}" up
+}
+
+del_wg(){
+	ip link del dev "${EASYWG}"
+
+	# del_other_net_route
+}
+
+set_wg(){
+	local allowed_ips
+	# client 可以不配置 listen-port 会随机使用 port
+	wg set ${EASYWG} private-key <(echo "${CLIENT_GENKEY}")
+	
+	if [ "$NETS6"x != x ];then
+		allowed_ips="${NETS}, ${NETS6}"
+	else
+		allowed_ips="${NETS}"
+	fi
+
+	wg set ${EASYWG} peer "${SERVER_PUBKEY}" \
+	endpoint "${ENDPOINT}" \
+	persistent-keepalive 25 \
+	allowed-ips "${allowed_ips}"
+	#allowed-ips "${NETS}"
+
+
+	if [ "$CLIENT_PSK"x != x ];then
+		wg set ${EASYWG} peer "${SERVER_PUBKEY}" \
+			preshared-key <(echo "${CLIENT_PSK}")
+	fi
+
+	add_other_net_route
+}
+
+
+add_dns(){
+	if [ "$DNS"x != x ];then
+		resolvectl dns "${EASYWG}" $DNS
+		resolvectl status "${EASYWG}"
+	fi
+}
+
+del_dns(){
+	if [ "$DNS"x != x ];then
+		resolvectl revert "${EASYWG}"
+		resolvectl status "${EASYWG}"
+	fi
+}
+
+
+add_table_id(){
+	while [[ -n $(ip -4 route list table $ROUTE_TABLE_ID 2>/dev/null) || -n $(ip -6 route list table $ROUTE_TABLE_ID 2>/dev/null) ]];
+	do
+		$ROUTE_TABLE_ID=$[ROUTE_TABLE_ID + 1]
+		if [ $ROUTE_TABLE_ID -gt 9999 ];then
+			echo "route_table_id -gt 9999" >&2
+			exit 1
+		fi
+	done
+	echo $ROUTE_TABLE_ID
+
+	FWMARK="0x${ROUTE_TABLE_ID}"
+}
+
+
+vpn(){
+
+	# wg show $wg-ifname fwmark
+	# fwmark="$(wg show "${EASYWG}" fwmark)"
+	# [[ -n $fwmark && $fwmark != off ]] || return 1
+
+	if [ "$1"x = "up"x ];then
+
+		# if ip route list table "$ROUTE_TABLE_ID" 2>/dev/null |grep -q "${EASYWG}"; then
+		if [[ $(ip route list table "$ROUTE_TABLE_ID" 2>/dev/null) ==  *"${EASYWG}"* ]]; then
+			echo "Already in VPN mode"
+			exit 1
+		fi
+
+		# add_table_id
+
+		#  check ipv6
+		local allowed_ips
+		if [ "$NETS6"x != x ];then
+			allowed_ips="0.0.0.0/0, ::/0"
+		else
+			allowed_ips="0.0.0.0/0"
+		fi
+
+		wg set "${EASYWG}" peer "${SERVER_PUBKEY}" allowed-ips "${allowed_ips}"
+		
+		wg set "${EASYWG}" fwmark "$FWMARK"
+	
+
+		if [ "$ADDR6"x != x ];then
+			ip -6 route add default dev ${EASYWG} table "$ROUTE_TABLE_ID"
+			ip -6 rule add not fwmark "$FWMARK" table "$ROUTE_TABLE_ID"
+			ip -6 rule add table main suppress_prefixlength 0
+		fi
+
+		ip route add default dev ${EASYWG} table "$ROUTE_TABLE_ID"
+		ip rule add not fwmark "$FWMARK" table "$ROUTE_TABLE_ID"
+		ip rule add table main suppress_prefixlength 0
+
+		# ip route flush cache
+
+		add_dns
+	
+	elif [ "$1"x = "down"x ];then
+
+		# if ip route list table "$ROUTE_TABLE_ID" 2>/dev/null |grep -q "${EASYWG}"; then
+		if [[ $(ip route list table "$ROUTE_TABLE_ID" 2>/dev/null) ==  *"${EASYWG}"* ]]; then
+			:
+		else
+			echo "Not VPN mode"
+			exit 1
+		fi
+
+
+		wg set "${EASYWG}" peer "${SERVER_PUBKEY}" allowed-ips "$NETS"
+
+		if [ "$ADDR6"x != x ];then
+			ip -6 route del default dev ${EASYWG} table "$ROUTE_TABLE_ID"
+			ip -6 rule del not from all fwmark ${FWMARK}
+			ip -6 rule del table main suppress_prefixlength 0
+		fi
+			
+		ip route del default dev ${EASYWG} table "$ROUTE_TABLE_ID"
+		ip rule del not from all fwmark ${FWMARK}
+		ip rule del table main suppress_prefixlength 0
+
+		del_dns
+	fi
+}
+
+
+main(){
+
+
+	if [ "$1" = "up" ] && [ "$2" = "vpn" ];then
+		if check_wg_exists "${EASYWG}";then
+			vpn "up"
+		else
+			add_wg
+			set_wg
+			vpn "up"
+		fi
+	elif [ "$1" = "down" ] && [ "$2" = "vpn" ];then
+
+		if check_wg_exists "${EASYWG}";then
+			vpn "down"
+		else
+			echo "not found wiregaurd: ${EASYWG}"
+		fi
+
+	elif [ "$1" = "down" ];then
+
+		# if ip route list table "$ROUTE_TABLE_ID" 2>/dev/null |grep -q "${EASYWG}"; then
+		if [[ $(ip route list table "$ROUTE_TABLE_ID" 2>/dev/null) ==  *"${EASYWG}"* ]]; then
+			vpn down
+		fi
+
+		del_wg
+
+	elif [ "$1" = "up" ] || [ -z "$1" ];then
+
+		# check interface already exists
+		if ip link show dev "${EASYWG}" >/dev/null 2>&1 ;then
+			echo "ifname: ${EASYWG} already exists"
+			exit 1
+		fi
+
+		add_wg
+		set_wg
+	fi
+
+}
+
+main "$1" "$2"
