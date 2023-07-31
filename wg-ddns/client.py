@@ -72,10 +72,15 @@ def main():
     ifname = conf["ifname"]
     wg_name = ifname["interface"]
 
+
     # ddns server 
     ddns_server = conf["ddns_server"]
 
     util.ip_link_add_wg(wg_name)
+
+    wg_mtu = ifname.get("MTU")
+    if wg_mtu is not None:
+        util.ip_link_add_wg(wg_name, wg_mtu)
 
 
     atexit.register(lambda :util.ip_link_del_wg(wg_name))

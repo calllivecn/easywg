@@ -27,7 +27,7 @@ logger = logging.getLogger("wg-pyz")
 
 
 ##################
-# dns 直接查询，避免系统缓存的影响
+# ~~dns 直接查询，避免系统缓存的影响。~~ 不行哦，缓存的是你的上游nameserver.
 ##################
 
 def dnsquery(domainname, dnsserver):
@@ -160,6 +160,12 @@ def ip_addr_add(ifname, CIDR):
         dev = ndb.interfaces[ifname]
         dev.add_ip(CIDR)
         # dev.set("state", "up")
+        dev.commit()
+
+def ip_link_mtu(ifname, mtu):
+    with NDB() as ndb:
+        dev = ndb.interfaces[ifname]
+        dev.set(MTU=mtu)
         dev.commit()
 
 
