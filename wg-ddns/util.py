@@ -30,7 +30,8 @@ logger = logging.getLogger("wg-pyz")
 # ~~dns 直接查询，避免系统缓存的影响。~~ 不行哦，缓存的是你的上游nameserver.
 ##################
 
-def dnsquery(domainname, dnsserver):
+# def dnsquery(domainname, dnsserver):
+def dnsquery(domainname):
     """
     只需要处理返回一个ip的情况
     return: [] or ["ip1"]
@@ -38,7 +39,8 @@ def dnsquery(domainname, dnsserver):
 
     # ipv4
     try:
-        p = run(["dig", "+short", f"@{dnsserver}", domainname, "A"], stdout=PIPE, text=True, check=True)
+        # p = run(["dig", "+short", f"@{dnsserver}", domainname, "A"], stdout=PIPE, text=True, check=True)
+        p = run(["dig", "+short", domainname, "A"], stdout=PIPE, text=True, check=True)
     except CalledProcessError as e:
         logger.warning(f"查询 {domainname} 域名异常: {e}")
         ipv4 = []
@@ -47,7 +49,7 @@ def dnsquery(domainname, dnsserver):
 
     # ipv6
     try:
-        p = run(["dig", "+short", f"@{dnsserver}", domainname, "AAAA"], stdout=PIPE, text=True, check=True)
+        p = run(["dig", "+short", domainname, "AAAA"], stdout=PIPE, text=True, check=True)
     except CalledProcessError as e:
         logger.warning(f"查询 {domainname} 域名异常: {e}")
         ipv6 = []
@@ -59,7 +61,7 @@ def dnsquery(domainname, dnsserver):
     ip  = ipv4 + ipv6
     """
     if len(ip) != 1:
-        logger.warning(f"在些应用场景下，域名只能对应一个ip。ipv4 + ipv6 也只需要一个")
+        logger.warning(f"在此应用场景下，域名只能对应一个ip。ipv4 + ipv6 也只需要一个")
 
     return ip[0]
     """
@@ -159,13 +161,12 @@ def ip_addr_add(ifname, CIDR):
     with NDB() as ndb:
         dev = ndb.interfaces[ifname]
         dev.add_ip(CIDR)
-        # dev.set("state", "up")
         dev.commit()
 
-def ip_link_mtu(ifname, mtu):
+def ip_link_mtu(ifname: str, mtu: int):
     with NDB() as ndb:
         dev = ndb.interfaces[ifname]
-        dev.set(MTU=mtu)
+        dev.set(mtu=mtu)
         dev.commit()
 
 
