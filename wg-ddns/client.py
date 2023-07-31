@@ -72,21 +72,20 @@ def main():
     ifname = conf["ifname"]
     wg_name = ifname["interface"]
 
-
-    # ddns server 
-    ddns_server = conf["ddns_server"]
-
+    # add wg
     util.ip_link_add_wg(wg_name)
 
-    wg_mtu = ifname.get("MTU")
+    # set MTU
+    wg_mtu = int(ifname.get("MTU"))
     if wg_mtu is not None:
-        util.ip_link_add_wg(wg_name, wg_mtu)
+        util.ip_link_mtu(wg_name, wg_mtu)
 
 
     atexit.register(lambda :util.ip_link_del_wg(wg_name))
     
     for CIDR in ifname["address"]:
         util.ip_addr_add(wg_name, CIDR)
+
 
     util.wg_set(wg_name, ifname["private_key"], listen_port=ifname.get("listen_port"), fwmark=ifname.get("fwmark"))
 
@@ -95,7 +94,7 @@ def main():
         peer = copy.deepcopy(peer_bak)
         
         dns = peer["endpoint_addr"]
-        addr = util.dnsquery(dns, ddns_server)
+        addr = util.dnsquery(dns)
         if len(addr) == 0:
             logger.warning(f"没有查询到 {server_addr} IP, 可能出错了。请检查")
             continue
@@ -120,7 +119,7 @@ def main():
 
         logger.info(f"重新解析域名，并更新wireguard。")
 
-        addr = util.dnsquery(server_addr, ddns_server)
+        addr = util.dnsquery(server_addr)
         if len(addr) == 0:
             logger.warning(f"没有查询到 {server_addr} IP, 可能出错了。请检查")
             # sys.exit(1)
