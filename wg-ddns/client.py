@@ -7,13 +7,21 @@ import sys
 import time
 import json
 import copy
+import struct
+import socket
 import atexit
 import logging
+import argparse
 import subprocess
 from pathlib import Path
 
 
 import util
+
+
+CHECK_PORT = 18123
+CHECK_INTERVAL = 5
+
 
 def getlogger(level=logging.INFO):
     logger = logging.getLogger("wg-pyz")
@@ -38,7 +46,7 @@ def loadconf(conf: Path = Path(sys.argv[1])):
         return json.load(f)
 
 
-# 在线检测
+# 在线检测 cmd 版本
 def check_alive(server_wg_ip):
     failed_count = 0
     while True:
@@ -57,17 +65,67 @@ def check_alive(server_wg_ip):
             logger.info(f"{server_wg_ip} 检测恢复...")
 
         failed_count = 0
-        time.sleep(1)
-    
+        time.sleep(CHECK_INTERVAL)
 
-def main():
 
-    try:
-        conf = loadconf()
-    except Exception:
-        print("配置错误")
-        sys.exit(1)
+# 在线检测 内置版本
+def check_alive2(server_wg_ip):
+
+    sock = socket.socket(socket.AF_INET6, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
+    sock.settimeout(5)
+
+    # 一个序列包
+    seq = 0
+
+    failed_count = 0
+    check_fail_flag = False
+
+    while True:
+        try:
+
+            sock.sendto(struct.pack("!Q", seq), (server_wg_ip, CHECK_PORT))
+            data, addr = sock.recvfrom(8192)
+            if addr[0] == server_wg_ip and seq == struct.unpack("!Q", data)[0]:
+                pass
+            else:
+                check_fail_flag = True
+
+        except socket.timeout:
+            check_fail_flag = True
+
+
+        if check_fail_flag:
+            logger.info(f"{server_wg_ip} 检测好像断开了...")
+            failed_count += 1
+
+            if failed_count >= 3:
+                logger.warning(f"{server_wg_ip} 线路断开了...")
+                return
+            else:
+                check_fail_flag = False
+                continue
+
+        if failed_count > 0:
+            logger.info(f"{server_wg_ip} 检测恢复...")
+
+        failed_count = 0
+        time.sleep(CHECK_INTERVAL)
+
+
+# 在线检测 内置版本
+def check_server(wg_ip):
+
+    sock = socket.socket(socket.AF_INET6, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
+    sock.bind((wg_ip, CHECK_PORT))
+
+    while True:
+        data, addr = sock.recvfrom(8192)
+        sock.sendto(data, addr)
     
+    sock.close()
+
+
+def server(conf):
     # 配置wg
     ifname = conf["ifname"]
     wg_name = ifname["interface"]
@@ -93,10 +151,13 @@ def main():
 
         peer = copy.deepcopy(peer_bak)
         
-        dns = peer["endpoint_addr"]
-        addr = util.dnsquery(dns)
+        endpoint_addr = peer["endpoint_addr"]
+
+        # addr = util.dnsquery(dns)
+        addr = util.getaddrinfo(endpoint_addr)
+
         if len(addr) == 0:
-            logger.warning(f"没有查询到 {server_addr} IP, 可能出错了。请检查")
+            logger.warning(f"没有查询到 {endpoint_addr} IP, 可能出错了。请检查")
             continue
 
 
@@ -113,13 +174,14 @@ def main():
         server_addr = peer["endpoint_addr"]
         public_key = peer["public_key"]
 
-        check_alive(conf["server_wg_ip"])
+        check_alive2(conf["server_wg_ip"])
 
         logger.debug(f"{server_addr=} {public_key=}")
 
         logger.info(f"重新解析域名，并更新wireguard。")
 
-        addr = util.dnsquery(server_addr)
+        # addr = util.dnsquery(server_addr)
+        addr = util.getaddrinfo(server_addr)
         if len(addr) == 0:
             logger.warning(f"没有查询到 {server_addr} IP, 可能出错了。请检查")
             # sys.exit(1)
@@ -133,6 +195,41 @@ def main():
             wg.set(wg_name, peer=peer)
         
 
-if __name__ == "__main__":            
+
+def main():
     # 怎么没用 ？ logger.setLevel(logging.DEBUG)
+
+    parse = argparse.ArgumentParser(
+        usage="%(prog)s",
+        epilog="https://github.com/calllivecn/easywg"
+    )
+
+    parse.add_argument("--server", metavar="server_ip", help="listen bind wg interface IP")
+
+    # parse.add_argument("--conf", metavar="server_ip", help="listen bind wg interface IP")
+    parse.add_argument("conf", metavar="config", nargs="+", help="config")
+
+    parse.add_argument("--parse", action="store_true", help=argparse.SUPPRESS)
+
+    args = parse.parse_args()
+
+    if args.parse:
+        print(args)
+        sys.exit(0)
+
+    if args.server:
+        check_server(args.server)
+        sys.exit(0)
+    else:
+    
+        try:
+            conf = loadconf()
+        except Exception:
+            print("配置错误")
+            sys.exit(1)
+
+        server(conf)
+
+
+if __name__ == "__main__":            
     main()

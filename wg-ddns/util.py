@@ -19,6 +19,7 @@ from subprocess import (
 
 from pyroute2 import (
     NDB,
+    IPRoute,
     WireGuard,
 )
 
@@ -75,6 +76,48 @@ def dnsquery(domainname):
     return ip[0]
 
 
+# 查询dns -> ip
+def getaddrinfo(domainname):
+    """
+    只需要处理返回一个ip的情况
+    return: [] or ["ip1"]
+    """
+
+    try:
+        addrinfo = socket.getaddrinfo(domainname, 0, type=socket.SOCK_DGRAM)
+    except socket.gaierror:
+        logger.warning(f"{domainname} 没有解析到ip")
+        return []
+    except socket.timeout:
+        logger.warning(f"{domainname} 解析超时")
+        return []
+
+    ipv4 = []
+    ipv6 = []
+    for info in addrinfo:
+        if info[0] == socket.AF_INET:
+            ipv4.append(info[4][0])
+        elif info[0] == socket.AF_INET6:
+            ipv6.append(info[4][0])
+
+    ip  = ipv4 + ipv6
+
+    logger.debug(f"查询到: {ip=}")
+    """
+    if len(ip) != 1:
+        logger.warning(f"在此应用场景下，域名只能对应一个ip。ipv4 + ipv6 也只需要一个")
+
+    return ip[0]
+    """
+    if len(ip) == 0:
+        logger.warning(f"没有查询到 {domainname} IP")
+        return []
+    elif len(ip) > 1:
+        logger.warning(f"查询到多个IP, 这个场景下不应该多个IP, 请删除多余的记录只保留一个。")
+        return []
+
+    return ip[0]
+
 ##################
 # 先使用命令方式生成密钥对，以后在添加 cryptography 生成方式
 ##################
@@ -126,6 +169,7 @@ def getifname_index(ifname):
 
 def ip_list_all():
     """
+    这里的address 是MAC 地址
     return:
     [
         {
@@ -148,13 +192,18 @@ def ip_list_all():
         }
     ]
     """
-    ndb = NDB()
-    r = (
-        ndb.interfaces.summary()
-        .select("index", "ifname", "address", "kind")
-        .format("json")
-    )
+    with NDB() as ndb:
+        r = (
+            ndb.interfaces.summary()
+            .select("index", "ifname", "address", "kind")
+            .format("json")
+        )
     return r
+
+def ip_list_addr():
+    with IPRoute() as ipr:
+        # ipr.get_addr(label="eth0")
+        ipr.get_addr()
 
 
 def ip_addr_add(ifname, CIDR):
@@ -279,13 +328,16 @@ def del_route(nets):
 ##################
 
 def list_wg():
-    ndb = NDB()
-    r = (
-        ndb.interfaces.summary()
-        .filter(kind="wireguard")
-        .select('index', 'ifname', 'address', 'kind')
-        .format("json")
-    )
+    """
+    这里的address 是MAC 地址
+    """
+    with NDB() as ndb:
+        r = (
+            ndb.interfaces.summary()
+            .filter(kind="wireguard")
+            .select('index', 'ifname', 'address', 'kind')
+            .format("json")
+        )
     return r
 
 
@@ -472,4 +524,6 @@ def test():
 
 
 if __name__ == "__main__":
-    test()
+    # test()
+    # getifname_ip("enp6s0")
+    list_wg()
