@@ -90,6 +90,7 @@ def check_alive2(wg_peer_ip, endpoint_addr, domainname):
 
     failed_count = 0
     check_fail_flag = False
+    update_domainname = False
 
     while True:
         try:
@@ -107,25 +108,28 @@ def check_alive2(wg_peer_ip, endpoint_addr, domainname):
         seq += 1
 
         if check_fail_flag:
-            logger.info(f"{wg_peer_ip} 检测好像断开了...")
+            logger.info(f"{wg_peer_ip} 检测线路时丢包...")
             failed_count += 1
 
             if failed_count >= CHECK_FAIL_COUNT:
                 logger.warning(f"{wg_peer_ip} 线路断开了...")
-                return
+                update_domainname = True
             else:
                 check_fail_flag = False
                 continue
 
-        if failed_count > 0:
-            logger.info(f"{wg_peer_ip} 检测恢复...")
+        else:
+
+            if failed_count > 0:
+                logger.info(f"{wg_peer_ip} 检测恢复...")
 
         failed_count = 0
 
         # 检测域名是否更新
         t2 = time.time()
 
-        if (t2 - t1) > 12*60:
+        if (t2 - t1) > 12*60 or update_domainname:
+            update_domainname = False
 
             new_peer_ip = util.getaddrinfo(domainname)
             if new_peer_ip != endpoint_addr:
