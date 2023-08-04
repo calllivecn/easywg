@@ -3,12 +3,15 @@
 # date 2023-08-16 01:55:59
 # author calllivecn <c-all@qq.com>
 
+
+import os
 import sys
 import time
 import json
 import copy
 import struct
 import socket
+import selectors
 import atexit
 import logging
 import argparse
@@ -17,6 +20,7 @@ from pathlib import Path
 
 
 import util
+import packet
 
 
 CHECK_PORT = 18123
@@ -77,6 +81,8 @@ def check_alive2(wg_peer_ip, endpoint_addr, domainname):
     peer_ip:
 
     return: new peer_ip
+
+    检测线路丢包，并行跑域名解析。
     """
 
     sock = socket.socket(socket.AF_INET6, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
@@ -86,50 +92,42 @@ def check_alive2(wg_peer_ip, endpoint_addr, domainname):
     t1 = time.time()
 
     # 一个序列包
-    seq = 0
+    alive = packet.Ping()
 
     failed_count = 0
-    check_fail_flag = False
-    update_domainname = False
+    packte_loss = True
 
     while True:
         try:
 
-            sock.sendto(struct.pack("!Q", seq), (wg_peer_ip, CHECK_PORT))
+            sock.sendto(alive.buf, (wg_peer_ip, CHECK_PORT))
             data, addr = sock.recvfrom(8192)
-            if addr[0] == wg_peer_ip and seq == struct.unpack("!Q", data)[0]:
-                pass
+            if addr[0] == wg_peer_ip and data == alive:
+                packte_loss = False
             else:
-                check_fail_flag = True
+                packte_loss = True
 
         except socket.timeout:
-            check_fail_flag = True
+            packte_loss = True
 
-        seq += 1
+        alive.next()
 
-        if check_fail_flag:
+
+        if packte_loss:
             logger.info(f"{wg_peer_ip} 检测线路时丢包...")
             failed_count += 1
 
-            if failed_count >= CHECK_FAIL_COUNT:
-                logger.warning(f"{wg_peer_ip} 线路断开了...")
-                update_domainname = True
-            else:
-                check_fail_flag = False
-                continue
+        if failed_count >= CHECK_FAIL_COUNT:
+            logger.warning(f"{wg_peer_ip} 线路断开了...")
 
-        else:
-
-            if failed_count > 0:
-                logger.info(f"{wg_peer_ip} 检测恢复...")
-
-        failed_count = 0
+        if failed_count > 0 and packte_loss is False:
+            logger.info(f"{wg_peer_ip} 检测恢复...")
+            failed_count = 0
 
         # 检测域名是否更新
         t2 = time.time()
 
-        if (t2 - t1) > 12*60 or update_domainname:
-            update_domainname = False
+        if (t2 - t1) > 12*60:
 
             new_peer_ip = util.getaddrinfo(domainname)
             if new_peer_ip != endpoint_addr:
@@ -141,10 +139,13 @@ def check_alive2(wg_peer_ip, endpoint_addr, domainname):
 
 
 # 在线检测 内置版本
-def check_alive_server(wg_local_ip):
+def check_alive_server(wg_ipv6):
+    """
+    只在wg接口ip上监听
+    """
 
     sock = socket.socket(socket.AF_INET6, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
-    sock.bind((wg_local_ip, CHECK_PORT))
+    sock.bind((wg_ipv6, CHECK_PORT))
 
     while True:
         data, addr = sock.recvfrom(8192)
@@ -206,12 +207,11 @@ def server(conf):
 
         logger.debug(f"{endpoint_addr=} {new_peer_ip=} {public_key=}")
 
-        logger.info(f"重新解析域名，并更新wireguard。")
-        
-        logger.info(f"新地址: {new_peer_ip}")
-        peer["endpoint_addr"] = new_peer_ip
+        logger.info(f"新地址更新wireguard: {new_peer_ip}")
 
+        peer["endpoint_addr"] = new_peer_ip
         logger.debug(f"{peer=}")
+
         with util.WireGuard() as wg:
             wg.set(wg_name, peer=peer)
         
