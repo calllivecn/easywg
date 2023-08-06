@@ -27,17 +27,19 @@ class PackteType(enum.IntEnum):
     ALIVE = 0x01
     PING = ALIVE
     WP_PEER_INFO = enum.auto()
+    MULTICAST_ALIVE = enum.auto()
+
 
 class PacketTypeError(Exception):
     pass
 
 class Ping(struct.Struct):
 
-    def __init__(self):
+    def __init__(self, typ = PackteType.PING):
 
         super().__init__("!BQ")
 
-        self.typ = PackteType.PING
+        self.typ = typ
         self.seq = 0
 
         self.buf = bytearray(self.size)

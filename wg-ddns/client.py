@@ -11,16 +11,33 @@ import json
 import copy
 import struct
 import socket
+import asyncio
 import selectors
+import threading
 import atexit
 import logging
 import argparse
 import subprocess
 from pathlib import Path
 
+from typing import (
+    Any,
+)
+
+from asyncio import (
+    transports,
+    DatagramProtocol,
+    DatagramTransport,
+)
+
 
 import util
-import packet
+from packet import (
+    PackteType,
+    Packet,
+    Ping,
+    PacketTypeError,
+)
 
 
 CHECK_PORT = 18123
@@ -92,7 +109,7 @@ def check_alive2(wg_peer_ip, endpoint_addr, domainname):
     t1 = time.time()
 
     # 一个序列包
-    alive = packet.Ping()
+    alive = Ping()
 
     failed_count = 0
     packte_loss = True
@@ -138,20 +155,79 @@ def check_alive2(wg_peer_ip, endpoint_addr, domainname):
         time.sleep(CHECK_INTERVAL)
 
 
+class AliveServerHandle(asyncio.DatagramProtocol):
+
+    def __init__(self) -> None:
+        super().__init__()
+
+        self.ping = Ping()
+
+        # 启动 server_hub 协程
+        asyncio.wait(self.multicast_server())
+
+    def connection_made(self, transport: DatagramTransport) -> None:
+        self.transport = transport
+
+    def datagram_received(self, data: bytes, addr: tuple) -> None:
+
+        addr, port = addr[0], addr[1]
+
+        typ = struct.unpack("!B", data[0])
+
+        if typ == PackteType.PING:
+            self.transport.sendto(data, addr)
+
+        elif typ == PackteType.MULTICAST_ALIVE:
+            pass
+
+
+    async def multicast_server(self):
+        """
+        # 每5秒发送组播，已使用wg hub 重新主动连接 各个peer
+        # async def multicast_server(transport: DatagramTransport):
+        """
+        mutlicast = Ping(PackteType.MULTICAST_ALIVE)
+        while True:
+            await self.transport.sendto(mutlicast)
+            await asyncio.sleep(CHECK_INTERVAL)
+
+
+async def async_server(sock):
+    loop = asyncio.get_running_loop()
+    transport, protocol = await loop.create_datagram_endpoint(AliveServerHandle, sock=sock)
+
+    try:
+        while True:
+            await asyncio.sleep(60)
+    except Exception:
+        pass
+    finally:
+        transport.close()
+
+
 # 在线检测 内置版本
-def check_alive_server(wg_ipv6):
+def check_alive_server(wg_ipv6, wg_ipv4=None):
     """
     只在wg接口ip上监听
     """
+    ths = []
+    if wg_ipv4 is not None:
+        sock4 = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
+        sock4.bind((wg_ipv4, CHECK_PORT))
+        th4 = threading.Thread(target=lambda: asyncio.run(async_server(sock4)), daemon=True)
+        th4.start()
+        ths.append(th4)
 
-    sock = socket.socket(socket.AF_INET6, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
-    sock.bind((wg_ipv6, CHECK_PORT))
 
-    while True:
-        data, addr = sock.recvfrom(8192)
-        sock.sendto(data, addr)
-    
-    sock.close()
+    sock6 = socket.socket(socket.AF_INET6, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
+    sock6.bind((wg_ipv6, CHECK_PORT))
+
+    th6 = threading.Thread(target=lambda: asyncio.run(async_server(sock6)), daemon=True)
+    th6.start()
+    ths.append(th6)
+
+    for th in ths:
+        th.join()
 
 
 def server(conf):
