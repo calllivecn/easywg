@@ -28,6 +28,7 @@ class PackteType(enum.IntEnum):
     PING = ALIVE
     WP_PEER_INFO = enum.auto()
     MULTICAST_ALIVE = enum.auto()
+    PING_REPLY = enum.auto()
 
 
 class PacketTypeError(Exception):
@@ -44,6 +45,10 @@ class Ping(struct.Struct):
 
         self.buf = bytearray(self.size)
         self.pack_into(self.buf, 0, self.typ, self.seq)
+    
+    def reply(self, ping_packet: bytes):
+        pass
+
     
     def next(self):
         self.seq += 1
