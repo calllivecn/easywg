@@ -119,15 +119,21 @@ def check_alive2(wg_peer_ip, endpoint_addr, domainname):
 
             sock.sendto(alive.buf, (wg_peer_ip, CHECK_PORT))
             data, addr = sock.recvfrom(8192)
+            print(f"{data=}")
+
             if addr[0] == wg_peer_ip and data == alive:
+                alive.next()
                 packte_loss = False
+
+            elif data[0] == PackteType.MULTICAST_ALIVE:
+                logger.debug(f"收到MUTLI_ALIVE: {addr=}")
+                packte_loss = False
+
             else:
                 packte_loss = True
 
         except socket.timeout:
             packte_loss = True
-
-        alive.next()
 
 
         if packte_loss:
@@ -160,35 +166,51 @@ class AliveServerHandle(asyncio.DatagramProtocol):
     def __init__(self) -> None:
         super().__init__()
 
-        self.ping = Ping()
+        # self.ping = Ping()
 
-        # 启动 server_hub 协程
-        asyncio.wait(self.multicast_server())
+        self.peers = {}
 
     def connection_made(self, transport: DatagramTransport) -> None:
         self.transport = transport
 
+        # 启动 server_hub 协程
+        # asyncio.ensure_future(self.multicast_server())
+
+
     def datagram_received(self, data: bytes, addr: tuple) -> None:
 
-        addr, port = addr[0], addr[1]
+        ip, port = addr[0], addr[1]
 
-        typ = struct.unpack("!B", data[0])
+        # typ = struct.unpack("!B", data[0:1])
+        typ = data[0]
 
         if typ == PackteType.PING:
             self.transport.sendto(data, addr)
+            logger.debug(f"收到PING: {ip}:{port}")
+
+            if self.peers.get(ip) is None:
+                logger.debug(f"新添加server --> peer 的MULTICAST_SERVER: {ip=}")
+                self.peers[ip] = ip
+                asyncio.ensure_future(self.multicast_server(addr=addr))
+
 
         elif typ == PackteType.MULTICAST_ALIVE:
-            pass
+            logger.debug(f"收到MULTICAST_ALIVE: {ip}:{port}")
+        
+        else:
+            logger.debug(f"其他UDP包：{ip}:{port} --> {data=}")
 
 
-    async def multicast_server(self):
+    async def multicast_server(self, addr):
         """
         # 每5秒发送组播，已使用wg hub 重新主动连接 各个peer
         # async def multicast_server(transport: DatagramTransport):
         """
         mutlicast = Ping(PackteType.MULTICAST_ALIVE)
+
         while True:
-            await self.transport.sendto(mutlicast)
+            # self.transport.sendto(mutlicast.buf, ("ff02::1", CHECK_PORT))
+            self.transport.sendto(mutlicast.buf, addr)
             await asyncio.sleep(CHECK_INTERVAL)
 
 
@@ -306,7 +328,7 @@ def main():
     parse.add_argument("--server", metavar="server_ip", help="listen bind wg interface IP")
 
     # parse.add_argument("--conf", metavar="server_ip", help="listen bind wg interface IP")
-    parse.add_argument("conf", metavar="config", nargs="+", help="config")
+    parse.add_argument("conf", metavar="config", nargs="*", help="config")
 
     parse.add_argument("--parse", action="store_true", help=argparse.SUPPRESS)
 
