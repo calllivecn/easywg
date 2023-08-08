@@ -22,6 +22,8 @@ from pathlib import Path
 
 from typing import (
     Any,
+    Tuple,
+    Dict,
 )
 
 from asyncio import (
@@ -102,7 +104,14 @@ def check_alive2(wg_peer_ip, endpoint_addr, domainname):
     检测线路丢包，并行跑域名解析。
     """
 
+    # 拿到连接 远程地址时 会用到的本地laddr
+    udp = socket.socket(socket.AF_INET6, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
+    udp.connect((wg_peer_ip, CHECK_PORT))
+    laddr = udp.getsockname()
+    udp.close()
+
     sock = socket.socket(socket.AF_INET6, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
+    sock.bind((laddr[0], CHECK_PORT))
     sock.settimeout(CHECK_TIMEOUT)
 
     # 每12分钟解析下域名，看看有没有改变。
@@ -119,7 +128,6 @@ def check_alive2(wg_peer_ip, endpoint_addr, domainname):
 
             sock.sendto(alive.buf, (wg_peer_ip, CHECK_PORT))
             data, addr = sock.recvfrom(8192)
-            print(f"{data=}")
 
             if addr[0] == wg_peer_ip and data == alive:
                 alive.next()
@@ -127,7 +135,7 @@ def check_alive2(wg_peer_ip, endpoint_addr, domainname):
 
             elif data[0] == PackteType.MULTICAST_ALIVE:
                 logger.debug(f"收到MUTLI_ALIVE: {addr=}")
-                packte_loss = False
+                continue
 
             else:
                 packte_loss = True
@@ -161,14 +169,46 @@ def check_alive2(wg_peer_ip, endpoint_addr, domainname):
         time.sleep(CHECK_INTERVAL)
 
 
+
+Address = Any
+
+class QueuqPair:
+    
+    def __init__(self, size=500):
+        self.r = asyncio.Queue(size)
+        self.w = asyncio.Queue(size)
+    
+
+
+class UDPAddressPair:
+
+    def __init__(self, transport, addr, pair: Tuple[asyncio.Queue, asyncio.Queue]):
+        self.transport = transport
+        self.peers = Dict[Address, QueuqPair] = {}
+        self.pair = pair
+        self.w_pair, self.r_pair = pair
+
+    async def udp_recv(self, nbytes: int) -> bytes:
+        return await self.r_pair.get()
+    
+
+    async def udp_send(self, data: bytes):
+        self.transport.sendto(data, self.peeraddr)
+
+    def _add_peers(self, new_peer_addr: Address):
+        self.peers[new_peer_addr] = self.pair
+
+
 class AliveServerHandle(asyncio.DatagramProtocol):
 
     def __init__(self) -> None:
         super().__init__()
 
-        # self.ping = Ping()
+        self._is_client = False
 
+        # self.ping = Ping()
         self.peers = {}
+        self.pairs: Tuple[Tuple, asyncio.Queue] = {}
 
     def connection_made(self, transport: DatagramTransport) -> None:
         self.transport = transport
@@ -177,7 +217,7 @@ class AliveServerHandle(asyncio.DatagramProtocol):
         # asyncio.ensure_future(self.multicast_server())
 
 
-    def datagram_received(self, data: bytes, addr: tuple) -> None:
+    def datagram_received(self, data: bytes, addr: Tuple) -> None:
 
         ip, port = addr[0], addr[1]
 
@@ -188,10 +228,11 @@ class AliveServerHandle(asyncio.DatagramProtocol):
             self.transport.sendto(data, addr)
             logger.debug(f"收到PING: {ip}:{port}")
 
-            if self.peers.get(ip) is None:
-                logger.debug(f"新添加server --> peer 的MULTICAST_SERVER: {ip=}")
-                self.peers[ip] = ip
-                asyncio.ensure_future(self.multicast_server(addr=addr))
+            peer_addr = self.peers.get(addr)
+            if peer_addr is None:
+                self.peers[addr] = addr
+                logger.debug(f"新添加server --> peer 的MULTICAST_SERVER: {addr=}")
+                asyncio.ensure_future(self.multicast_server(addr))
 
 
         elif typ == PackteType.MULTICAST_ALIVE:
@@ -199,6 +240,10 @@ class AliveServerHandle(asyncio.DatagramProtocol):
         
         else:
             logger.debug(f"其他UDP包：{ip}:{port} --> {data=}")
+
+
+    async def accept(self):
+        assert not self._is_client
 
 
     async def multicast_server(self, addr):
@@ -211,16 +256,20 @@ class AliveServerHandle(asyncio.DatagramProtocol):
         while True:
             # self.transport.sendto(mutlicast.buf, ("ff02::1", CHECK_PORT))
             self.transport.sendto(mutlicast.buf, addr)
+            asyncio.wait()
             await asyncio.sleep(CHECK_INTERVAL)
+
+    async def read(self, nbytes: int) -> bytes:
+        pass
 
 
 async def async_server(sock):
     loop = asyncio.get_running_loop()
     transport, protocol = await loop.create_datagram_endpoint(AliveServerHandle, sock=sock)
 
+    future = loop.create_future()
     try:
-        while True:
-            await asyncio.sleep(60)
+        await future
     except Exception:
         pass
     finally:
