@@ -27,16 +27,18 @@ class PackteType(enum.IntEnum):
     ALIVE = 0x01
     PING = ALIVE
     WP_PEER_INFO = enum.auto()
-    MULTICAST_ALIVE = enum.auto()
     PING_REPLY = enum.auto()
+    MULTICAST_ALIVE = enum.auto()
+    MULTICAST_ALIVE_REPLY = enum.auto()
 
 
 class PacketTypeError(Exception):
     pass
 
+
 class Ping(struct.Struct):
 
-    def __init__(self, typ = PackteType.PING):
+    def __init__(self, typ=PackteType.PING):
 
         super().__init__("!BQ")
 
@@ -46,8 +48,11 @@ class Ping(struct.Struct):
         self.buf = bytearray(self.size)
         self.pack_into(self.buf, 0, self.typ, self.seq)
     
-    def reply(self, ping_packet: bytes):
-        pass
+
+    @classmethod
+    def reply(cls, ping_packet: bytes):
+        ping = cls(PackteType.PING_REPLY)
+        
 
     
     def next(self):
