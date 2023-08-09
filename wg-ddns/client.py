@@ -4,19 +4,15 @@
 # author calllivecn <c-all@qq.com>
 
 
-import os
 import sys
 import time
 import json
 import copy
-import struct
 import socket
-import asyncio
-import selectors
-import threading
 import atexit
 import logging
 import argparse
+import threading
 import subprocess
 from pathlib import Path
 
@@ -26,8 +22,8 @@ from typing import (
     Dict,
 )
 
+import asyncio
 from asyncio import (
-    transports,
     DatagramProtocol,
     DatagramTransport,
 )
@@ -199,7 +195,7 @@ class UDPAddressPair:
         self.peers[new_peer_addr] = self.pair
 
 
-class AliveServerHandle(asyncio.DatagramProtocol):
+class AliveServerHandle(DatagramProtocol):
 
     def __init__(self) -> None:
         super().__init__()
