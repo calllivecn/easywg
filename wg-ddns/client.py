@@ -12,7 +12,9 @@ import socket
 import atexit
 import logging
 import argparse
+import ipaddress
 import threading
+import selectors
 import subprocess
 from pathlib import Path
 
@@ -31,7 +33,7 @@ from asyncio import (
 
 import util
 from packet import (
-    PackteType,
+    PacketType,
     Packet,
     Ping,
     PacketTypeError,
@@ -41,7 +43,7 @@ from packet import (
 CHECK_PORT = 18123
 CHECK_INTERVAL = 5
 CHECK_TIMEOUT = 5
-CHECK_FAIL_COUNT = 3
+CHECK_FAIL_COUNT = 6
 
 
 def getlogger(level=logging.INFO):
@@ -129,7 +131,7 @@ def check_alive2(wg_peer_ip, endpoint_addr, domainname):
                 alive.next()
                 packte_loss = False
 
-            elif data[0] == PackteType.MULTICAST_ALIVE:
+            elif data[0] == PacketType.MULTICAST_ALIVE:
                 logger.debug(f"收到MUTLI_ALIVE: {addr=}")
                 continue
 
@@ -168,133 +170,135 @@ def check_alive2(wg_peer_ip, endpoint_addr, domainname):
 
 Address = Any
 
-class QueuqPair:
-    
-    def __init__(self, size=500):
-        self.r = asyncio.Queue(size)
-        self.w = asyncio.Queue(size)
-    
+def serverhub_daemon(wg_ip):
+    pass
 
 
-class UDPAddressPair:
-
-    def __init__(self, transport, addr, pair: Tuple[asyncio.Queue, asyncio.Queue]):
-        self.transport = transport
-        self.peers = Dict[Address, QueuqPair] = {}
-        self.pair = pair
-        self.w_pair, self.r_pair = pair
-
-    async def udp_recv(self, nbytes: int) -> bytes:
-        return await self.r_pair.get()
-    
-
-    async def udp_send(self, data: bytes):
-        self.transport.sendto(data, self.peeraddr)
-
-    def _add_peers(self, new_peer_addr: Address):
-        self.peers[new_peer_addr] = self.pair
-
-
-class AliveServerHandle(DatagramProtocol):
-
-    def __init__(self) -> None:
-        super().__init__()
-
-        self._is_client = False
-
-        # self.ping = Ping()
-        self.peers = {}
-        self.pairs: Tuple[Tuple, asyncio.Queue] = {}
-
-    def connection_made(self, transport: DatagramTransport) -> None:
-        self.transport = transport
-
-        # 启动 server_hub 协程
-        # asyncio.ensure_future(self.multicast_server())
-
-
-    def datagram_received(self, data: bytes, addr: Tuple) -> None:
-
-        ip, port = addr[0], addr[1]
-
-        # typ = struct.unpack("!B", data[0:1])
-        typ = data[0]
-
-        if typ == PackteType.PING:
-            self.transport.sendto(data, addr)
-            logger.debug(f"收到PING: {ip}:{port}")
-
-            peer_addr = self.peers.get(addr)
-            if peer_addr is None:
-                self.peers[addr] = addr
-                logger.debug(f"新添加server --> peer 的MULTICAST_SERVER: {addr=}")
-                asyncio.ensure_future(self.multicast_server(addr))
-
-
-        elif typ == PackteType.MULTICAST_ALIVE:
-            logger.debug(f"收到MULTICAST_ALIVE: {ip}:{port}")
-        
-        else:
-            logger.debug(f"其他UDP包：{ip}:{port} --> {data=}")
-
-
-    async def accept(self):
-        assert not self._is_client
-
-
-    async def multicast_server(self, addr):
-        """
-        # 每5秒发送组播，已使用wg hub 重新主动连接 各个peer
-        # async def multicast_server(transport: DatagramTransport):
-        """
-        mutlicast = Ping(PackteType.MULTICAST_ALIVE)
-
-        while True:
-            # self.transport.sendto(mutlicast.buf, ("ff02::1", CHECK_PORT))
-            self.transport.sendto(mutlicast.buf, addr)
-            asyncio.wait()
-            await asyncio.sleep(CHECK_INTERVAL)
-
-    async def read(self, nbytes: int) -> bytes:
-        pass
-
-
-async def async_server(sock):
-    loop = asyncio.get_running_loop()
-    transport, protocol = await loop.create_datagram_endpoint(AliveServerHandle, sock=sock)
-
-    future = loop.create_future()
-    try:
-        await future
-    except Exception:
-        pass
-    finally:
-        transport.close()
+def start_thread(*args, **kwargs):
+    th = threading.Thread(*args, **kwargs)
+    th.start()
+    return th
 
 
 # 在线检测 内置版本
-def check_alive_server(wg_ipv6, wg_ipv4=None):
-    """
-    只在wg接口ip上监听
-    """
-    ths = []
-    if wg_ipv4 is not None:
-        sock4 = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
-        sock4.bind((wg_ipv4, CHECK_PORT))
-        th4 = threading.Thread(target=lambda: asyncio.run(async_server(sock4)), daemon=True)
-        th4.start()
-        ths.append(th4)
+class CheckAlive:
+    
+    def __init__(self, serverhub=False):
+        """
+        只在wg接口ip上监听
+        """
+        self.se = selectors.DefaultSelector()
+        self.socks = []
+
+        self.peers = {} # {addr: {laddr: addr, event: e, data: bytes}}
+
+        self.serverhub = serverhub
+    
+        # 需要更新域名的事件
+        # self.update_peer_domain.set()
+
+    def peer_check(self, addr: tuple):
+        info = self.peers[addr]
+        sock = info["sock"]
+        e = info["event"]
+
+        failed_count = 0
+
+        ping = Ping()
+
+        while True:
+
+            sock.sendto(ping.buf, addr)
+
+            if e.wait(timeout=5):
+                e.clear()
+                reply = info["data"]
+                if reply == ping:
+                    ping.next()
+                    failed_count = 0
+                    logger.info(f"{addr} 检测恢复...")
+                else:
+                    logger.debug(f"可能收到了乱序包: {reply}")
+
+            else:
+                failed_count += 1
+
+                logger.info(f"{addr} 检测线路时丢包...")
+
+                # 如果持续丢6个包(30s) 就算线路断开，通知下update更新(如果这个peer有配置Endpoint)。
+                if failed_count > CHECK_FAIL_COUNT:
+                    # 重新解析域名，重新连接。
+                    # self.update_peer_domain(pubkey, domainname)
+                    logger.warning(f"{addr} 线路断开了...")
+
+                    self.peers.pop(addr)
+                    break
+        
+        logger.debug(f"{sock.getpeername()} --> {addr[0]} 检测线程退出.")
+    
+
+    def check_alive(self, wg_peer_ip: str):
+        start_thread(target=self.peer_check, args=((wg_peer_ip, CHECK_PORT),))
 
 
-    sock6 = socket.socket(socket.AF_INET6, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
-    sock6.bind((wg_ipv6, CHECK_PORT))
+    def server(self, wg_ipv6, wg_ipv4=None):
+        if wg_ipv4 is not None:
+            sock4 = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
+            sock4.setblocking(False)
+            sock4.bind((wg_ipv4, CHECK_PORT))
+            self.socks.append(sock4)
+            self.se.register(sock4, selectors.EVENT_READ)
 
-    th6 = threading.Thread(target=lambda: asyncio.run(async_server(sock6)), daemon=True)
-    th6.start()
-    ths.append(th6)
 
-    for th in ths:
-        th.join()
+        sock6 = socket.socket(socket.AF_INET6, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
+        sock6.setblocking(False)
+        sock6.bind((wg_ipv6, CHECK_PORT))
+        self.socks.append(sock6)
+
+        self.se.register(sock6, selectors.EVENT_READ)
+
+        while True:
+            for key, event in self.se.select():
+                sock = key.fileobj
+                data, addr = sock.recvfrom(8192)
+                logger.debug(f"UDP: 接收到的 {addr=} {data=}")
+
+                # 要是指定类型的数据
+                try:
+                    typ = PacketType(data[0])
+                except ValueError:
+                    logger.debug(f"未知类型数据丢弃. {data=}")
+                    continue
+
+                if typ == PacketType.PING:
+                    reply = Ping.reply(data)
+                    sock.sendto(reply.buf, addr)
+                    
+                    # 添加 ping 线程
+                    peeraddr = self.peers.get(addr)
+                    if peeraddr is None:
+                        e = threading.Event()
+                        self.peers[addr] = {"sock": sock, "event": e, "data": b""}
+                        start_thread(target=self.peer_check, args=(addr,))
+
+                elif typ == PacketType.PING_REPLY:
+                    peeraddr = self.peers.get(addr)
+                    peeraddr["data"] = data
+                    peeraddr["event"].set()
+
+                elif typ == PacketType.MULTICAST_ALIVE:
+                    reply = Ping.reply(data)
+                    reply.typ = PacketType.MULTICAST_ALIVE_REPLY
+                    sock.sendto(reply.buf, addr)
+
+                else:
+                    # serverhub.put((data, addr))
+                    logger.debug(f"目前测试阶段，直接丢弃。")
+
+    def close(self):
+        for sock in self.socks:
+            self.se.unregister(sock)
+            sock.close()
 
 
 def server(conf):
@@ -312,90 +316,48 @@ def server(conf):
 
 
     atexit.register(lambda :util.ip_link_del_wg(wg_name))
+
     
+    self_ipv4 = None
+    self_ipv6 = None
+    # 配置 wg 接口ip地址
     for CIDR in ifname["address"]:
         util.ip_addr_add(wg_name, CIDR)
 
+        ip = ipaddress.ip_address(CIDR.split("/")[0])
+        if ip.version == 4:
+            if self_ipv4 is None:
+                self_ipv4 = ip
+        elif ip.version == 6:
+            if self_ipv6 is None:
+                self_ipv6 = ip
 
     util.wg_set(wg_name, ifname["private_key"], listen_port=ifname.get("listen_port"), fwmark=ifname.get("fwmark"))
+
+    checkalive = CheckAlive()
+    checkalive.server(self_ipv6, self_ipv4)
 
     for peer_bak in conf["peers"]:
 
         peer = copy.deepcopy(peer_bak)
         
-        endpoint_addr = peer["endpoint_addr"]
+        endpoint_addr = peer.get("endpoint_addr")
+        if endpoint_addr is not None:
+            addr = util.getaddrinfo(endpoint_addr)
 
-        # addr = util.dnsquery(dns)
-        addr = util.getaddrinfo(endpoint_addr)
+            if len(addr) == 0:
+                logger.warning(f"没有查询到 {endpoint_addr} IP, 可能出错了。请检查")
+                continue
 
-        if len(addr) == 0:
-            logger.warning(f"没有查询到 {endpoint_addr} IP, 可能出错了。请检查")
-            continue
-
-
-        peer["endpoint_addr"] = addr
+            peer["endpoint_addr"] = addr
         
         logger.debug(f"{peer=}")
         with util.WireGuard() as wg:
             wg.set(wg_name, peer=peer)
-    
 
-    while True:
-        # 目前测试阶段，只先做一个peer端的处理
-        peer = copy.deepcopy(conf["peers"][0])
-        endpoint_addr = peer["endpoint_addr"]
-        public_key = peer["public_key"]
-
-        new_peer_ip = check_alive2(conf["server_wg_ip"], addr, endpoint_addr)
-
-        logger.debug(f"{endpoint_addr=} {new_peer_ip=} {public_key=}")
-
-        logger.info(f"新地址更新wireguard: {new_peer_ip}")
-
-        peer["endpoint_addr"] = new_peer_ip
-        logger.debug(f"{peer=}")
-
-        with util.WireGuard() as wg:
-            wg.set(wg_name, peer=peer)
         
-        addr = new_peer_ip
-        
-
-
-def main():
-    # 怎么没用 ？ logger.setLevel(logging.DEBUG)
-
-    parse = argparse.ArgumentParser(
-        usage="%(prog)s",
-        epilog="https://github.com/calllivecn/easywg"
-    )
-
-    parse.add_argument("--server", metavar="server_ip", help="listen bind wg interface IP")
-
-    # parse.add_argument("--conf", metavar="server_ip", help="listen bind wg interface IP")
-    parse.add_argument("conf", metavar="config", nargs="*", help="config")
-
-    parse.add_argument("--parse", action="store_true", help=argparse.SUPPRESS)
-
-    args = parse.parse_args()
-
-    if args.parse:
-        print(args)
-        sys.exit(0)
-
-    if args.server:
-        check_alive_server(args.server)
-        sys.exit(0)
-    else:
+        # 为每个peer 启动 checkalive
+        wg_peer_ip = peer.get("wg_check_ip")
+        if wg_peer_ip is not None:
+            start_thread(target=checkalive.check_alive, args=(wg_peer_ip,))
     
-        try:
-            conf = loadconf()
-        except Exception:
-            print("配置错误")
-            sys.exit(1)
-
-        server(conf)
-
-
-if __name__ == "__main__":            
-    main()
