@@ -189,6 +189,8 @@ class CheckAlive:
         """
         self.se = selectors.DefaultSelector()
         self.socks = []
+        self.sock4 = None
+        self.sock6 = None
 
         self.peers = {} # {addr: {laddr: addr, event: e, data: bytes}}
 
@@ -197,9 +199,18 @@ class CheckAlive:
         # 需要更新域名的事件
         # self.update_peer_domain.set()
 
-    def peer_check(self, addr: tuple):
-        info = self.peers[addr]
-        sock = info["sock"]
+    def peer_check(self, raddr: tuple):
+        """
+        peer 端被动检测
+        """
+        info = self.peers[raddr]
+        # sock = info["sock"]
+        ip = ipaddress.ip_address(raddr[0])
+        if ip.version == 6:
+            sock = socket.socket(socket.AF_INET6, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
+        elif ip.version == 4:
+            sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
+        
         e = info["event"]
 
         failed_count = 0
@@ -208,7 +219,13 @@ class CheckAlive:
 
         while True:
 
-            sock.sendto(ping.buf, addr)
+            try:
+                sock.sendto(ping.buf, raddr)
+            except OSError as e:
+                # 这是server hub 端，有可能peer还没有
+                logger.debug(f"{e}")
+                self.peers.pop(raddr)
+                break
 
             if e.wait(timeout=5):
                 e.clear()
@@ -216,29 +233,45 @@ class CheckAlive:
                 if reply == ping:
                     ping.next()
                     failed_count = 0
-                    logger.info(f"{addr} 检测恢复...")
+                    logger.info(f"{raddr} 检测恢复...")
                 else:
                     logger.debug(f"可能收到了乱序包: {reply}")
 
             else:
                 failed_count += 1
 
-                logger.info(f"{addr} 检测线路时丢包...")
+                logger.info(f"{raddr} 检测线路时丢包...")
 
                 # 如果持续丢6个包(30s) 就算线路断开，通知下update更新(如果这个peer有配置Endpoint)。
                 if failed_count > CHECK_FAIL_COUNT:
                     # 重新解析域名，重新连接。
                     # self.update_peer_domain(pubkey, domainname)
-                    logger.warning(f"{addr} 线路断开了...")
+                    logger.warning(f"{raddr} 线路断开了...")
 
-                    self.peers.pop(addr)
+                    self.peers.pop(raddr)
                     break
+            
+            time.sleep(CHECK_INTERVAL)
         
-        logger.debug(f"{sock.getpeername()} --> {addr[0]} 检测线程退出.")
+        logger.debug(f"本地 --> {raddr[0]} 检测线程退出.")
+
+        self.peers.pop(raddr)
+        sock.close()
     
 
     def check_alive(self, wg_peer_ip: str):
-        start_thread(target=self.peer_check, args=((wg_peer_ip, CHECK_PORT),))
+        """
+        peer 端主动检测
+        """
+
+        # 拿到连接 远程地址时 会用到的本地laddr
+        udp.connect((wg_peer_ip, CHECK_PORT))
+        raddr = udp.getpeername()
+
+        e = threading.Event()
+        self.peers[raddr] = {"event": e, "data": b""}
+
+        start_thread(target=self.peer_check, args=(raddr,), name="check_alive()")
 
 
     def server(self, wg_ipv6, wg_ipv4=None):
@@ -246,14 +279,16 @@ class CheckAlive:
             sock4 = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
             sock4.setblocking(False)
             sock4.bind((wg_ipv4, CHECK_PORT))
-            self.socks.append(sock4)
             self.se.register(sock4, selectors.EVENT_READ)
+            self.socks.append(sock4)
+            self.sock4 = sock4
 
 
         sock6 = socket.socket(socket.AF_INET6, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
         sock6.setblocking(False)
         sock6.bind((wg_ipv6, CHECK_PORT))
         self.socks.append(sock6)
+        self.sock6 = sock6
 
         self.se.register(sock6, selectors.EVENT_READ)
 
@@ -278,8 +313,8 @@ class CheckAlive:
                     peeraddr = self.peers.get(addr)
                     if peeraddr is None:
                         e = threading.Event()
-                        self.peers[addr] = {"sock": sock, "event": e, "data": b""}
-                        start_thread(target=self.peer_check, args=(addr,))
+                        self.peers[addr] = {"event": e, "data": b""}
+                        start_thread(target=self.peer_check, args=(addr,), name="self.peer_check()")
 
                 elif typ == PacketType.PING_REPLY:
                     peeraddr = self.peers.get(addr)
@@ -327,15 +362,16 @@ def server(conf):
         ip = ipaddress.ip_address(CIDR.split("/")[0])
         if ip.version == 4:
             if self_ipv4 is None:
-                self_ipv4 = ip
+                self_ipv4 = ip.exploded
         elif ip.version == 6:
             if self_ipv6 is None:
-                self_ipv6 = ip
+                self_ipv6 = ip.exploded
 
     util.wg_set(wg_name, ifname["private_key"], listen_port=ifname.get("listen_port"), fwmark=ifname.get("fwmark"))
+    logger.debug(f"配置接口：{wg_name}")
 
     checkalive = CheckAlive()
-    checkalive.server(self_ipv6, self_ipv4)
+    start_thread(target=checkalive.server, args=(self_ipv6, self_ipv4), name="CheckAlive.server()")
 
     for peer_bak in conf["peers"]:
 
@@ -351,7 +387,7 @@ def server(conf):
 
             peer["endpoint_addr"] = addr
         
-        logger.debug(f"{peer=}")
+        logger.debug(f"配置peer: {peer}")
         with util.WireGuard() as wg:
             wg.set(wg_name, peer=peer)
 
@@ -359,5 +395,44 @@ def server(conf):
         # 为每个peer 启动 checkalive
         wg_peer_ip = peer.get("wg_check_ip")
         if wg_peer_ip is not None:
-            start_thread(target=checkalive.check_alive, args=(wg_peer_ip,))
+            logger.debug(f"为每个peer 启动 checkalive: {wg_peer_ip}")
+            start_thread(target=checkalive.check_alive, args=(wg_peer_ip,), name=f"check_alive-{wg_peer_ip}")
+
+
+def main():
+    # 怎么没用 ？ logger.setLevel(logging.DEBUG)
+
+    parse = argparse.ArgumentParser(
+        usage="%(prog)s",
+        epilog="https://github.com/calllivecn/easywg"
+    )
+
+    parse.add_argument("--server", metavar="server_ip", help="listen bind wg interface IP")
+
+    # parse.add_argument("--conf", metavar="server_ip", help="listen bind wg interface IP")
+    parse.add_argument("conf", metavar="config", nargs="*", help="config")
+
+    parse.add_argument("--parse", action="store_true", help=argparse.SUPPRESS)
+
+    args = parse.parse_args()
+
+    if args.parse:
+        print(args)
+        sys.exit(0)
+
+    if args.server:
+        server(args.server)
+        sys.exit(0)
+    else:
     
+        try:
+            conf = loadconf()
+        except Exception:
+            print("配置错误")
+            sys.exit(1)
+
+        server(conf)
+
+
+if __name__ == "__main__":            
+    main() 
