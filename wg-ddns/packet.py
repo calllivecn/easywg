@@ -22,7 +22,7 @@ from typing import (
 Self = TypeVar("Self")
 
 
-class PackteType(enum.IntEnum):
+class PacketType(enum.IntEnum):
 
     ALIVE = 0x01
     PING = ALIVE
@@ -38,7 +38,7 @@ class PacketTypeError(Exception):
 
 class Ping(struct.Struct):
 
-    def __init__(self, typ=PackteType.PING):
+    def __init__(self, typ=PacketType.PING):
 
         super().__init__("!BQ")
 
@@ -50,9 +50,18 @@ class Ping(struct.Struct):
     
 
     @classmethod
-    def reply(cls, ping_packet: bytes):
-        ping = cls(PackteType.PING_REPLY)
-        
+    def reply(cls, ping_packet: bytes) -> Type["Ping"]:
+        ping = cls(PacketType.PING_REPLY)
+        typ, ping.seq = cls.unpck(ping_packet[:cls.size])
+        return ping
+
+    
+    @classmethod
+    def frombuf(cls, packet: bytes) -> Type["Ping"]:
+        typ, seq = cls.unpack(packet[:cls.size])
+        p = cls(typ)
+        p.seq = seq
+        return p
 
     
     def next(self):
@@ -61,7 +70,7 @@ class Ping(struct.Struct):
             self.seq = 0
 
         self.pack_into(self.buf, 0, self.typ, self.seq)
-
+    
 
     # def __eq__(self, other: bytes|Type["Ping"]): # py3.10 才支持
     def __eq__(self, other: Union[bytes, Type["Ping"]]):
