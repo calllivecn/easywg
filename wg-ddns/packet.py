@@ -49,17 +49,19 @@ class Ping(struct.Struct):
         self.pack_into(self.buf, 0, self.typ, self.seq)
     
 
-    @classmethod
-    def reply(cls, ping_packet: bytes) -> Type["Ping"]:
-        ping = cls(PacketType.PING_REPLY)
-        typ, ping.seq = cls.unpck(ping_packet[:cls.size])
-        return ping
+    # @classmethod
+    @staticmethod
+    def reply(ping_packet: bytes) -> Type["Ping"]:
+        p = Ping(PacketType.PING_REPLY)
+        typ, p.seq = p.unpack(ping_packet[:p.size])
+        return p
 
     
-    @classmethod
-    def frombuf(cls, packet: bytes) -> Type["Ping"]:
-        typ, seq = cls.unpack(packet[:cls.size])
-        p = cls(typ)
+    # @classmethod
+    @staticmethod
+    def frombuf(packet: bytes) -> Type["Ping"]:
+        p = Ping()
+        typ, seq = p.unpack(packet[:p.size])
         p.seq = seq
         return p
 
