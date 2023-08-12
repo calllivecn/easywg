@@ -286,7 +286,7 @@ class CheckAlive:
                 reply = ping.reply(data)
                 if ping.seq == reply.seq:
 
-                    if failed_count > CHECK_FAILED_COUNT:
+                    if failed_count > 0:
                         failed_count = 0
                         logger.info(f"{raddr} 检测恢复...")
 
@@ -294,6 +294,8 @@ class CheckAlive:
                 else:
                     logger.debug(f"可能收到了乱序包: {data}, 继续接收...")
 
+            if failed_count > CHECK_FAILED_COUNT:
+                logger.warning(f" --> {raddr} 线路断开了...")
 
             ping.next()
 
