@@ -25,12 +25,6 @@ from typing import (
     Dict,
 )
 
-import asyncio
-from asyncio import (
-    DatagramProtocol,
-    DatagramTransport,
-)
-
 
 import util
 from packet import (
@@ -172,7 +166,10 @@ def check_alive2(wg_peer_ip, endpoint_addr, domainname):
 
 
 Address = Any
-PeerRaddr = Dict[tuple[PacketType, str, int], queue.Queue]
+if sys.version_info < (3, 10):
+    PeerRaddr = Any
+else:
+    PeerRaddr = Dict[tuple[PacketType, str, int], queue.Queue]
 
 def serverhub_daemon(wg_ip):
     pass
