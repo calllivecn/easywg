@@ -24,12 +24,13 @@ Self = TypeVar("Self")
 
 class PacketType(enum.IntEnum):
 
-    ALIVE = 0x01
-    PING = ALIVE
+    PING = 0x01
     WP_PEER_INFO = enum.auto()
     PING_REPLY = enum.auto()
-    MULTICAST_ALIVE = enum.auto()
-    MULTICAST_ALIVE_REPLY = enum.auto()
+    SERVER_PING = enum.auto()
+    SERVER_PING_REPLY = enum.auto()
+    WP_PEER_INFO_CONFIRM = enum.auto()
+    
 
 
 class PacketTypeError(Exception):
@@ -49,20 +50,27 @@ class Ping(struct.Struct):
         self.pack_into(self.buf, 0, self.typ, self.seq)
     
 
-    # @classmethod
     @staticmethod
-    def reply(ping_packet: bytes) -> Type["Ping"]:
-        p = Ping(PacketType.PING_REPLY)
-        typ, p.seq = p.unpack(ping_packet[:p.size])
+    def reply(packet: bytes) -> Type["Ping"]:
+
+        p = Ping()
+
+        if packet[0] == PacketType.PING:
+            p.typ = PacketType.PING_REPLY
+
+        elif packet[0] == PacketType.SERVER_PING:
+            p.typ = PacketType.SERVER_PING_REPLY
+
+        typ, p.seq = p.unpack(packet[:p.size])
+        p.pack_into(p.buf, 0, p.typ, p.seq)
         return p
 
     
     # @classmethod
     @staticmethod
-    def frombuf(packet: bytes) -> Type["Ping"]:
-        p = Ping()
-        typ, seq = p.unpack(packet[:p.size])
-        p.seq = seq
+    def server_reply(packet: bytes) -> Type["Ping"]:
+        p = Ping(PacketType.SERVER_PING_REPLY)
+        typ, p.seq = p.unpack(packet[:p.size])
         return p
 
     
@@ -88,7 +96,8 @@ class Ping(struct.Struct):
 class Packet(struct.Struct):
     """
     type: 1B
-    length: 4B    
+    sender_pubkey: 32B
+    length: 4B
     payload: ...
     """
 
