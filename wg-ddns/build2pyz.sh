@@ -26,10 +26,9 @@ clean(){
 
 trap clean SIGINT SIGTERM EXIT ERR
 
-cp *.py "$TMP"
+cp src/*.py "$TMP"
 
-find "$TMP" -type d -name "__pycache__" -exec rm -r "{}" "+"
-
+#find "$TMP" -type d -name "__pycache__" -exec rm -r "{}" "+"
 #shiv --site-packages "$TMP" --compressed -p '/usr/bin/python3 -sE' -o "${NAME}.pyz" -e "client:main"
 
 python -m zipapp --compress --python '/usr/bin/python -sE' -o "${NAME}.pyz" --main "client:main" "$TMP"
