@@ -18,11 +18,14 @@ import threading
 import selectors
 import subprocess
 from pathlib import Path
+from dataclasses import dataclass
 
 from typing import (
     Any,
     Tuple,
     Dict,
+    Optional,
+    Union,
 )
 
 
@@ -88,88 +91,17 @@ def check_alive(server_wg_ip):
         time.sleep(CHECK_TIMEOUT)
 
 
-# 在线检测 内置版本
-def check_alive2(wg_peer_ip, endpoint_addr, domainname):
-    """
-    wg_peer_ip:
-    peer_ip:
-
-    return: new peer_ip
-
-    检测线路丢包，并行跑域名解析。
-    """
-
-    # 拿到连接 远程地址时 会用到的本地laddr
-    udp = socket.socket(socket.AF_INET6, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
-    udp.connect((wg_peer_ip, CHECK_PORT))
-    laddr = udp.getsockname()
-    udp.close()
-
-    sock = socket.socket(socket.AF_INET6, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
-    sock.bind((laddr[0], CHECK_PORT))
-    sock.settimeout(CHECK_TIMEOUT)
-
-    # 每12分钟解析下域名，看看有没有改变。
-    t1 = time.time()
-
-    # 一个序列包
-    alive = Ping()
-
-    failed_count = 0
-    packte_loss = True
-
-    while True:
-        try:
-
-            sock.sendto(alive.buf, (wg_peer_ip, CHECK_PORT))
-            data, addr = sock.recvfrom(8192)
-
-            if addr[0] == wg_peer_ip and data == alive:
-                alive.next()
-                packte_loss = False
-
-            elif data[0] == PacketType.MULTICAST_ALIVE:
-                logger.debug(f"收到MUTLI_ALIVE: {addr=}")
-                continue
-
-            else:
-                packte_loss = True
-
-        except socket.timeout:
-            packte_loss = True
-
-
-        if packte_loss:
-            logger.info(f"{wg_peer_ip} 检测线路时丢包...")
-            failed_count += 1
-
-        if failed_count >= CHECK_FAILED_COUNT:
-            logger.warning(f"{wg_peer_ip} 线路断开了...")
-
-        if failed_count > 0 and packte_loss is False:
-            logger.info(f"{wg_peer_ip} 检测恢复...")
-            failed_count = 0
-
-        # 检测域名是否更新
-        t2 = time.time()
-
-        if (t2 - t1) > 12*60:
-
-            new_peer_ip = util.getaddrinfo(domainname)
-            if new_peer_ip != endpoint_addr:
-                return new_peer_ip
-
-            t1 = t2
-        
-        time.sleep(CHECK_TIMEOUT)
-
+@dataclass
+class CPeer:
+    q: queue.Queue
+    conf: Union[Dict, None] = None
 
 
 Address = Any
 if sys.version_info < (3, 10):
     PeerRaddr = Any
 else:
-    PeerRaddr = Dict[tuple[PacketType, str, int], queue.Queue]
+    PeerRaddr = Dict[tuple[PacketType, str, int], CPeer]
 
 def serverhub_daemon(wg_ip):
     pass
@@ -179,6 +111,8 @@ def start_thread(*args, **kwargs):
     th = threading.Thread(*args, **kwargs)
     th.start()
     return th
+
+
 
 
 # 在线检测 内置版本
@@ -196,77 +130,27 @@ class CheckAlive:
         self.peers: PeerRaddr = {}
 
         self.serverhub = serverhub
+
+
+        # 当前配置
+        self.conf = None
     
         # 需要更新域名的事件
         # self.update_peer_domain.set()
+        self.cur_real_ip = ""
 
 
-    def check_peer(self, wg_peer_ip: str):
-        """
-        peer 端主动检测
-        """
-        ip = ipaddress.ip_address(wg_peer_ip)
-
-        if ip.version == 6:
-            sock = self.sock6
-        elif ip.version == 4:
-            sock = self.sock4
-        
-        failed_count = 0
-
-        ping = Ping()
-
-        while True:
-
-            try:
-                # sock.sendto(ping.buf, (ip.exploded, CHECK_PORT))
-                sock.send(ping.buf)
-
-                while True:
-                    reply = sock.recv(8192)
-
-                    if reply == ping:
-                        ping.next()
-                        failed_count = 0
-                        logger.info(f"{wg_peer_ip} 检测恢复...")
-                        break
-                    else:
-                        logger.debug(f"可能收到了乱序包: {reply}")
-            
-            except socket.timeout:
-                    
-                failed_count += 1
-
-                logger.info(f"{wg_peer_ip} 检测线路时丢包 {failed_count}/{CHECK_FAILED_COUNT}...")
-
-                # 如果持续丢6个包(30s) 就算线路断开，通知下update更新(如果这个peer有配置Endpoint)。
-                if failed_count > CHECK_FAILED_COUNT:
-                    # 重新解析域名，重新连接。
-                    # self.update_peer_domain(pubkey, domainname)
-                    logger.warning(f"{wg_peer_ip} 线路断开了...")
-                    break
-
-                continue
-            
-            except OSError as e:
-                logger.debug(f"这是server hub 端，有可能peer还没有。 {e}")
-                break
-
-            time.sleep(CHECK_TIMEOUT)
-        
-        logger.debug(f"本地 --> {wg_peer_ip} 检测线程退出.")
-
-        sock.close()
-    
-
-    def ping(self, sock: socket.socket, typ: PacketType, peeraddr: PeerRaddr, q: queue.Queue):
+    def ping(self, sock: socket.socket, cpeer: PeerRaddr):
         """
         peer 端被动检测
         """
-        _, ip, port = peeraddr
-        raddr = (ip, port)
+        peer = self.peers[cpeer]
 
-        ping = Ping(typ)
+        raddr = (cpeer[1], cpeer[2])
+
+        q = peer.q
+
+        ping = Ping()
 
         failed_count = 0
 
@@ -288,14 +172,63 @@ class CheckAlive:
 
                     if failed_count > 0:
                         failed_count = 0
+                        logger.info(f"--> {raddr} 检测恢复...")
+
+                    break
+                else:
+                    logger.debug(f"可能收到了乱序包: {data}, 继续接收...")
+
+            if failed_count >= CHECK_FAILED_COUNT:
+                logger.warning(f"--> {raddr} 线路断开了...")
+                self.update_domain(peer.conf)
+
+            ping.next()
+
+            time.sleep(CHECK_TIMEOUT)
+
+
+    def server_ping(self, sock: socket.socket, cpeer: PeerRaddr):
+        """
+        peer 端被动检测
+        """
+        peer = self.peers[cpeer]
+        raddr = (cpeer[1], cpeer[2])
+        logger.debug(f"添加 {raddr} check...")
+
+        ping = Ping(PacketType.SERVER_PING)
+
+        failed_count = 0
+
+        while True:
+            
+            sock.sendto(ping.buf, raddr)
+            while True:
+                try:
+                    data = peer.q.get(timeout=CHECK_TIMEOUT)
+                except queue.Empty:
+                    # 超时
+                    failed_count += 1
+                    logger.info(f"{raddr} 检测线路时丢包 {failed_count}/{CHECK_FAILED_COUNT}...")
+                    break
+
+                
+                reply = ping.reply(data)
+                if ping.seq == reply.seq:
+
+                    if failed_count > 0:
+                        failed_count = 0
                         logger.info(f"{raddr} 检测恢复...")
 
                     break
                 else:
                     logger.debug(f"可能收到了乱序包: {data}, 继续接收...")
 
-            if failed_count > CHECK_FAILED_COUNT:
+            if failed_count >= CHECK_FAILED_COUNT:
                 logger.warning(f" --> {raddr} 线路断开了...")
+                # logger.log(LEVEL_DEBUG2 ,f"{raddr} 退出")
+                logger.debug(f"{raddr} 退出")
+                self.peers.pop(cpeer)
+                return
 
             ping.next()
 
@@ -340,20 +273,23 @@ class CheckAlive:
                     sock.sendto(ping.buf, addr)
                     
                     # 添加 server ping 线程
-                    ping_peeraddr = (PacketType.SERVER_PING_REPLY, addr[0], addr[1])
+                    ping_peeraddr = (
+                        PacketType.SERVER_PING_REPLY,
+                        addr[0],
+                        addr[1],
+                        )
                     peer = self.peers.get(ping_peeraddr)
                     if peer is None:
-                        q = queue.Queue(128)
-                        self.peers[ping_peeraddr] = q
-                        start_thread(target=self.ping, args=(sock, PacketType.SERVER_PING, ping_peeraddr, q), name="server peer_check()")
+                        self.peers[ping_peeraddr] = CPeer(queue.Queue(128))
+                        start_thread(target=self.server_ping, args=(sock, ping_peeraddr), name="server_ping check()")
 
                 elif typ == PacketType.PING_REPLY:
-                    q = self.peers.get(peeraddr)
-                    if q is None:
+                    cpeer = self.peers.get(peeraddr)
+                    if cpeer is None:
                         logger.debug(f"没有这个线程：{peeraddr=}")
                     else:
                         try:
-                            q.put_nowait(data)
+                            cpeer.q.put_nowait(data)
                         except queue.Full:
                             logger.debug(f"{peeraddr} 接收队列已满, 丢弃 {data}")
 
@@ -362,13 +298,13 @@ class CheckAlive:
                     sock.sendto(ping.buf, addr)
 
                 elif typ == PacketType.SERVER_PING_REPLY:
-                    q = self.peers.get(peeraddr)
+                    cpeer = self.peers.get(peeraddr)
 
-                    if q is None:
+                    if cpeer is None:
                         logger.debug(f"没有这个线程：{peeraddr=}")
                     else:
                         try:
-                            q.put_nowait(data)
+                            cpeer.q.put_nowait(data)
                         except queue.Full:
                             logger.debug(f"{peeraddr} 接收队列已满, 丢弃 {data}")
 
@@ -377,6 +313,34 @@ class CheckAlive:
                     pass
                 else:
                     logger.debug(f"当前还未处理类型数据包，丢弃。{data=}")
+
+
+    def update_domain(self, peer_conf: dict):
+        """
+        如果是ip直接返回，是域名才解析。
+        """
+        endpoint = peer_conf["endpoint_addr"]
+
+        try:
+            ip = ipaddress.ip_address(endpoint).exploded
+        except ValueError:
+            ip = util.dnsquery(endpoint)
+
+
+        if self.cur_real_ip != ip:
+            self.cur_real_ip = ip
+
+            wg_name = self.conf["ifname"]["interface"]
+
+            peer = copy.deepcopy(peer_conf)
+            peer["endpoint_addr"] = ip
+
+            logger.info(f"更新peer端新地址: {self.cur_real_ip} --> {ip}")
+            util.wg_peer_option(wg_name, peer["public_key"], peer)
+
+        else:
+            logger.debug(f"没有更新地址: {ip}")
+
 
     def close(self):
         for sock in self.socks:
@@ -419,6 +383,7 @@ def server(conf):
     logger.debug(f"配置接口：{wg_name}")
 
     checkalive = CheckAlive()
+    checkalive.conf = conf
     start_thread(target=checkalive.server, args=(self_ipv6, self_ipv4), name="CheckAlive.server()")
 
     for peer_bak in conf["peers"]:
@@ -445,12 +410,21 @@ def server(conf):
         if wg_check_ip:
             wg_check_port = peer.get("wg_check_port", 19000)
 
-            peeraddr = (PacketType.PING_REPLY, wg_check_ip, wg_check_port)
-            q = queue.Queue(128)
-            checkalive.peers[peeraddr] = q
+            cpeer = (
+                PacketType.PING_REPLY,
+                wg_check_ip,
+                wg_check_port,
+                )
+
+            peer_value = CPeer(
+                queue.Queue(128),
+                peer_bak,
+            )
+
+            checkalive.peers[cpeer] = peer_value
 
             logger.debug(f"为 {wg_check_ip}:{wg_check_port} 启动 checkalive")
-            start_thread(target=checkalive.ping, args=(checkalive.sock6, PacketType.PING, peeraddr, q), name=f"check_alive-{wg_check_ip}")
+            start_thread(target=checkalive.ping, args=(checkalive.sock6, cpeer), name=f"check_alive-{wg_check_ip}")
 
 
 def main():
