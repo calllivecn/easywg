@@ -350,7 +350,7 @@ def wg_set(ifname, private_key, listen_port=None, fwmark=None):
         wg.set(ifname, private_key=private_key, listen_port=listen_port, fwmark=fwmark)
 
 
-def wg_peer(ifname, peer_bak):
+def wg_peer(ifname, peer):
     """
     client 端才需要指定 server 地址(endpoint_addr)
     **kwargs 这里都是可以选项:
@@ -365,8 +365,6 @@ def wg_peer(ifname, peer_bak):
         'allowed_ips': ['::/0'],
     }
     """
-
-    peer = copy.deepcopy(peer_bak)
 
     # 如果 endpoint_addr 是域名, 需要解析成ip
     # ipv6 也许会有问题
@@ -429,7 +427,7 @@ def wg_peer_option(ifname, peer_pubkey, opt_val: dict):
     是的每次，重设置都要添加是所有必须的参数
     """
     opt_val["public_key"] = peer_pubkey
-    print(f"{opt_val=}")
+    logger.debug(f"{opt_val=}")
     with WireGuard() as wg:
         wg.set(ifname, peer=opt_val)
 
