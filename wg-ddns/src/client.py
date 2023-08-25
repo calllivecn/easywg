@@ -6,7 +6,6 @@
 
 import sys
 import time
-import json
 import copy
 import queue
 import socket
@@ -62,11 +61,15 @@ def getlogger(level=logging.INFO):
 logger = getlogger(logging.DEBUG)
 
 
-# 加载配置文件
-def loadconf(conf: Path = Path(sys.argv[1])):
+try:
+    import tomllib
+except ModuleNotFoundError:
+    import tomli as tomllib
 
-    with open(conf) as f:
-        return json.load(f)
+# 加载配置文件
+def loadconf(conf: Path):
+    with open(conf, "rb") as f:
+        return tomllib.load(f)
 
 
 # 在线检测 cmd 版本
@@ -386,9 +389,11 @@ def server(conf):
     checkalive.conf = conf
     start_thread(target=checkalive.server, args=(self_ipv6, self_ipv4), name="CheckAlive.server()")
 
-    for peer_bak in conf["peers"]:
+    for wg_conf in conf["peers"]:
 
-        peer = copy.deepcopy(peer_bak)
+        peer_conf = copy.deepcopy(wg_conf)
+        info = peer_conf["info"]
+        peer = peer_conf["peer"]
         
         endpoint_addr = peer.get("endpoint_addr")
         if endpoint_addr is not None:
@@ -406,9 +411,9 @@ def server(conf):
 
         
         # 为每个peer 启动 checkalive
-        wg_check_ip = peer.get("wg_check_ip")
+        wg_check_ip = info.get("wg_check_ip")
         if wg_check_ip:
-            wg_check_port = peer.get("wg_check_port", 19000)
+            wg_check_port = info.get("wg_check_port", 19000)
 
             cpeer = (
                 PacketType.PING_REPLY,
@@ -418,7 +423,7 @@ def server(conf):
 
             peer_value = CPeer(
                 queue.Queue(128),
-                peer_bak,
+                wg_conf["peer"],
             )
 
             checkalive.peers[cpeer] = peer_value
@@ -458,22 +463,14 @@ def main():
     else:
     
         try:
-            conf = loadconf()
+            conf = loadconf(Path(sys.argv[1]))
         except Exception:
             print("配置错误")
             sys.exit(1)
 
         CHECK_PORT = conf.get("check_port", 19000)
-
-        try:
-            CHECK_TIMEOUT = conf["check_timeout"]
-        except KeyError:
-            pass
-
-        try:
-            CHECK_FAILED_COUNT = conf["check_failed_count"]
-        except KeyError:
-            pass
+        CHECK_TIMEOUT = conf.get("check_timeout", 5)
+        CHECK_FAILED_COUNT = conf.get("check_failed_count", 6)
 
         server(conf)
 
