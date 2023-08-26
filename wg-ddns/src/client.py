@@ -327,11 +327,10 @@ class CheckAlive:
         try:
             ip = ipaddress.ip_address(endpoint).exploded
         except ValueError:
-            ip = util.dnsquery(endpoint)
+            ip = util.getaddrinfo(endpoint)
 
 
         if self.cur_real_ip != ip:
-            self.cur_real_ip = ip
 
             wg_name = self.conf["ifname"]["interface"]
 
@@ -341,6 +340,7 @@ class CheckAlive:
             logger.info(f"更新peer端新地址: {self.cur_real_ip} --> {ip}")
             util.wg_peer_option(wg_name, peer["public_key"], peer)
 
+            self.cur_real_ip = ip
         else:
             logger.debug(f"没有更新地址: {ip}")
 
