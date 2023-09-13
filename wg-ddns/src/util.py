@@ -5,7 +5,6 @@
 # author calllivecn <c-all@qq.com>
 
 import os
-import copy
 import socket
 import logging
 import ipaddress
@@ -142,7 +141,7 @@ def genpsk():
 ###########
 
 def ip(cmd):
-    cp = run(cmd.split(), check=True)
+    return run(cmd.split(), check=True)
 
 def set_global_route_wg(ifname, table_id, fwmark):
 
@@ -167,7 +166,7 @@ def getifname_index(ifname):
     with NDB() as ndb:
         return ndb.interfaces[ifname]["index"]
 
-def ip_list_all():
+def ip_list_all(ndb):
     """
     这里的address 是MAC 地址
     return:
@@ -192,19 +191,50 @@ def ip_list_all():
         }
     ]
     """
-    with NDB() as ndb:
-        r = (
-            ndb.interfaces.summary()
-            .select("index", "ifname", "address", "kind")
-            .format("json")
-        )
+    # with NDB() as ndb:
+    r = (
+        ndb.interfaces.summary()
+        .select("index", "ifname", "address", "kind")
+        .format("json")
+    )
     return r
 
-def ip_list_addr():
+def ip_addr_list():
     with IPRoute() as ipr:
         # ipr.get_addr(label="eth0")
-        ipr.get_addr()
+        r = ipr.get_addr()
+    return r
 
+
+def ip_addr_ifname(ndb, ifname):
+    """
+    return:
+    [
+        {
+            "address": "10.1.3.200",
+            "ifname": "wg-pyz",
+            "prefixlen": 24,
+            "target": "localhost",
+            "tflags": 0
+        },
+        {
+            "address": "fc03::200",
+            "ifname": "wg-pyz",
+            "prefixlen": 64,
+            "target": "localhost",
+            "tflags": 0
+        }
+    ]
+
+    """
+    r = (
+        ndb.interfaces[ifname]
+        .ipaddr
+        .summary()
+        # .select("addres", "prefix")
+        .format("json")
+    ) 
+    return r
 
 def ip_addr_add(ifname, CIDR):
     with NDB() as ndb:
@@ -234,7 +264,7 @@ def ip_link_del_wg(ifname):
         dev.commit()
 
 
-def getifname_ip(ifname):
+def getifname_ip(ndb, ifname):
     """
     查询ipv4 + ipv6
     如果给定接口名不存在，返回空list: []
@@ -252,11 +282,11 @@ def getifname_ip(ifname):
         }
     ]
     """
-    ndb = NDB()
+    # with NDB() as ndb:
     r = (
         ndb.addresses.summary()
-        .select("ifname", "address", "prefixlen")
         .filter(ifname=ifname)
+        .select("ifname", "address", "prefixlen")
         .format("json")
     )
     return r
@@ -327,17 +357,17 @@ def del_route(nets):
 # Wireguard 操作
 ##################
 
-def list_wg():
+def list_wg(ndb):
     """
     这里的address 是MAC 地址
     """
-    with NDB() as ndb:
-        r = (
-            ndb.interfaces.summary()
-            .filter(kind="wireguard")
-            .select('index', 'ifname', 'address', 'kind')
-            .format("json")
-        )
+    # with NDB() as ndb:
+    r = (
+        ndb.interfaces.summary()
+        .filter(kind="wireguard")
+        .select('index', 'ifname', 'kind')
+        .format("json")
+    )
     return r
 
 
@@ -432,6 +462,7 @@ def wg_peer_option(ifname, peer_pubkey, opt_val: dict):
         wg.set(ifname, peer=opt_val)
 
     
+# 查看wg 配置信息
 
 
 ###########
@@ -507,12 +538,30 @@ def remove_forwarding(table_name="easywg"):
 
 
 def test():
+    import pprint
+    
+    # 目前观察结论：好像使用*.summary()的就不能提前关闭ndb
+    ndb = NDB()
 
-    print("="*10, "ip list:", "="*10)
-    print(ip_list_all())
+    print("="*10, "ifname index:", "="*10)
+    # print(f"""{getifname_index("wg-pyz")=}""")
+
+    print("="*10, "ip list all:", "="*10)
+    # print(ip_list_all(ndb))
+
+    print("="*10, "ip addr ifname:", "="*10)
+    print(ip_addr_ifname(ndb, "wg-pyz"))
+
+    # for ip_addrs in ip_addr_list():
+    #     msg = pprint.pformat(ip_addrs)
+    #     print("="*10, ":", "="*10)
+    #     print(f"{msg}")
 
     print("="*10, "wg list:", "="*10)
-    print(list_wg())
+    # print(list_wg(ndb))
+
+    print("="*10, "getifname_ip list:", "="*10)
+    # print(getifname_ip(ndb, "enp6s0"))
 
     # 需要 root
     # print("="*10, "wg create:", "="*10)
@@ -520,8 +569,8 @@ def test():
     # input("按回车继续。。。")
     # ip_link_down_wg("wg-test0")
 
+    ndb.close()
 
 if __name__ == "__main__":
     # test()
-    # getifname_ip("enp6s0")
-    list_wg()
+    test()
