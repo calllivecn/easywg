@@ -50,7 +50,7 @@ def show_wg(ifname):
     with WireGuard() as wg:
         wg = wg.info(ifname)[0]
     
-    return wg
+    # return wg
 
     # wg 从pyroute2 里 解析 出来 dict 的 信息格式
     # 之后还需要添加，address, 
@@ -68,23 +68,66 @@ def show_wg(ifname):
         elif "LISTEN_PORT" in k:
             wg_conf["listen_port"] = v
         
+        elif "WGDEVICE_A_FWMARK" in k:
+            wg_conf["fwmark"] = v
+        
+        elif "WGDEVICE_A_PEERS" in k:
+            peers = v
+        
         else:
             print(f"跳过: {k=} {v=}")
 
 
     peers_conf = []
     wg_conf["peers"] = peers_conf
-    peers = wg["attrs"]["WGDEVICE_A_PEERS"]
-    for p in peers:
-        if "PUBLIC_KEY" in p[0]:
-            peers_conf.append()
+    # peers = wg["attrs"]["WGDEVICE_A_PEERS"]
+    for peer in peers:
+        peer_conf = {}
+        for k, v in peer["attrs"]:
+            if "PUBLIC_KEY" in k:
+                peer_conf["public_key"] = v
 
+            elif "PRESHARED_KEY" in k:
+                peer_conf["preshared_key"] = v
 
-    return wg
+            elif "PROTOCOL_VERSION" in k:
+                peer_conf["wg_protocol_version"] = v
+            
+            elif "ENDPOINT" in k:
+                peer_conf["endpoint_addr"] = v["addr"]
+                peer_conf["endpoint_port"] = v["port"]
+            
+            elif "ALLOWEDIPS" in k:
+                ips = []
+                for nets in v:
+                    ips.append(nets["addr"])
+
+                peer_conf["allowed_ips"] = ips 
+
+            # elif "HANDSHAKE_TIME" in k:
+                # peer_conf["handshake_time"]
+            
+            # elif "PERSISTENT_KEEPALIVE_INTERVAL" in k:
+
+            elif "WGPEER_A_TX_BYTES" == k:
+                peer_conf["tx_bytes"] = v
+            
+            elif "WGPEER_A_RX_BYTES" == k:
+                peer_conf["rx_bytes"] = v
+            
+
+        
+        peers_conf.append(peer_conf)
+
+    wg_conf["peers"] = peers_conf
+
+    return wg_conf
 
 
 print(list_wg())
-wg = show_wg("wg-pyz")
-print(pprint.pformat(wg))
+print("="*20)
+wg_conf = show_wg("wg-pyz")
+print(pprint.pformat(wg_conf))
+print("="*20)
 
 ndb.close()
