@@ -357,7 +357,7 @@ def del_route(nets):
 # Wireguard 操作
 ##################
 
-def list_wg(ndb):
+def list_wg_all(ndb):
     """
     这里的address 是MAC 地址
     """
@@ -365,9 +365,20 @@ def list_wg(ndb):
     r = (
         ndb.interfaces.summary()
         .filter(kind="wireguard")
-        .select('index', 'ifname', 'kind')
+        .select("index", "ifname", "kind")
         .format("json")
     )
+    return r
+
+
+def show_wg(ndb, ifname):
+
+    r = (
+        ndb.interfaces[ifname]
+        .select("index", "ifname", "kind")
+        .format("json")
+    )
+
     return r
 
 
