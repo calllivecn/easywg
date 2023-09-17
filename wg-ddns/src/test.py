@@ -3,7 +3,6 @@
 # date 2023-09-13 20:06:16
 # author calllivecn <c-all@qq.com>
 
-import logging
 
 
 from pyroute2 import (

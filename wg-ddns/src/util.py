@@ -28,6 +28,7 @@ logger = logging.getLogger("wg-pyz")
 
 ##################
 # ~~dns 直接查询，避免系统缓存的影响。~~ 不行哦，缓存的是你的上游nameserver.
+# 命令行版本
 ##################
 
 # def dnsquery(domainname, dnsserver):
@@ -137,7 +138,7 @@ def genpsk():
     return p.stdout.rstrip(os.linesep)
 
 ############
-# ip route、　ip rule
+# ip route、　ip rule 、 命令行版本
 ###########
 
 def ip(cmd):
@@ -155,7 +156,6 @@ def unset_global_route_wg(ifname, table_id, fwmark):
     ip(f"ip route del default dev {ifname} table {table_id}")
     ip(f"ip rule del not fwmark {fwmark} table {table_id}")
     ip(f"ip rule del table main suppress_prefixlength 0")
-
 
 
 ##################
@@ -289,7 +289,7 @@ def getifname_ip(ndb, ifname):
         ndb.addresses.summary()
         .filter(ifname=ifname)
         .select("ifname", "address", "prefixlen")
-        .format("json")
+        # .format("json")
     )
     return r
 
@@ -368,7 +368,7 @@ def list_wg_all(ndb):
         ndb.interfaces.summary()
         .filter(kind="wireguard")
         .select("index", "ifname", "kind")
-        .format("json")
+        # .format("json")
     )
     return r
 
@@ -378,7 +378,7 @@ def show_wg(ndb, ifname):
     r = (
         ndb.interfaces[ifname]
         .select("index", "ifname", "kind")
-        .format("json")
+        # .format("json")
     )
 
     return r
