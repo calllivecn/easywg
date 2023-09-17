@@ -208,6 +208,8 @@ def ip_addr_list():
 
 def ip_addr_ifname(ndb, ifname):
     """
+    # 这种 .format("josn" or "csv") 返回的是文本。
+    # 可以直接使用 *.address的方式获取属性
     return:
     [
         {
@@ -231,8 +233,8 @@ def ip_addr_ifname(ndb, ifname):
         ndb.interfaces[ifname]
         .ipaddr
         .summary()
-        # .select("addres", "prefix")
-        .format("json")
+        # .select("address", "prefixlen")
+        # .format("json")
     ) 
     return r
 
