@@ -3,11 +3,17 @@
 # date 2023-09-13 20:06:16
 # author calllivecn <c-all@qq.com>
 
+import logging
+
 
 from pyroute2 import (
     NDB,
     WireGuard,
 )
+
+import util
+from log import logger
+
 
 ndb = NDB()
 
@@ -75,12 +81,19 @@ def show_wg(ifname):
             peers = v
         
         else:
-            print(f"跳过: {k=} {v=}")
+            logger.debug(f"跳过: {k=} {v=}")
 
+
+    addrs = []
+    with NDB() as ndb:
+        for addr in util.ip_addr_ifname(ndb, ifname):
+            logger.debug(f"{addr=} {addr.address=}, {addr.prefixlen=}")
+            addrs.append("/".join([addr.address, str(addr.prefixlen)]))
+
+    wg_conf["address"] = addrs
 
     peers_conf = []
     wg_conf["peers"] = peers_conf
-    # peers = wg["attrs"]["WGDEVICE_A_PEERS"]
     for peer in peers:
         peer_conf = {}
         for k, v in peer["attrs"]:
@@ -88,7 +101,8 @@ def show_wg(ifname):
                 peer_conf["public_key"] = v
 
             elif "PRESHARED_KEY" in k:
-                peer_conf["preshared_key"] = v
+                if v != b"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=":
+                    peer_conf["preshared_key"] = v
 
             elif "PROTOCOL_VERSION" in k:
                 peer_conf["wg_protocol_version"] = v
@@ -116,7 +130,6 @@ def show_wg(ifname):
                 peer_conf["rx_bytes"] = v
             
 
-        
         peers_conf.append(peer_conf)
 
     wg_conf["peers"] = peers_conf
@@ -124,10 +137,12 @@ def show_wg(ifname):
     return wg_conf
 
 
-print(list_wg())
-print("="*20)
+list_wg_list = list_wg()
+logger.debug(f"""{"="*20}""")
+logger.debug(f"{type(list_wg_list)=}")
+
 wg_conf = show_wg("wg-pyz")
-print(pprint.pformat(wg_conf))
-print("="*20)
+logger.debug(f"""{"="*20}""")
+logger.debug(pprint.pformat(wg_conf))
 
 ndb.close()
