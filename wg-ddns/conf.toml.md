@@ -1,5 +1,5 @@
 
-```yaml
+```ini
 # 非原版配置
 [info]
 # check_listen_port = 19000 # 可选
