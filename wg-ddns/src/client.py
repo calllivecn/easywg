@@ -431,7 +431,7 @@ def main():
     parse.add_argument("--server", metavar="server_ip", help="listen bind wg interface IP")
 
     # parse.add_argument("--conf", metavar="server_ip", help="listen bind wg interface IP")
-    parse.add_argument("conf", metavar="config", nargs="*", help="config")
+    parse.add_argument("conf", metavar="config", nargs="1", help="config")
 
     parse.add_argument("--parse", action="store_true", help=argparse.SUPPRESS)
 
@@ -451,7 +451,8 @@ def main():
     else:
     
         try:
-            conf = loadconf(Path(sys.argv[1]))
+            # conf = loadconf(Path(sys.argv[1]))
+            conf = loadconf(Path(args.conf))
         except Exception:
             print("配置错误")
             sys.exit(1)
@@ -461,6 +462,7 @@ def main():
         CHECK_FAILED_COUNT = conf.get("check_failed_count", 6)
 
         server(conf)
+    
 
 
 if __name__ == "__main__":            
