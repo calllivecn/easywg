@@ -1,0 +1,12 @@
+[Unit]
+Description=easy WireGuard client wg.pyz
+After=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/sbin/wg.pyz /etc/wgs/%i.toml
+ExecStop=/usr/sbin/kill $MAINPID
+
+[Install]
+WantedBy=multi-user.target
+
