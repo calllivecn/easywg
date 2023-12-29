@@ -322,6 +322,7 @@ class CheckAlive:
             next_endpoint = self.__next_domain(endpoint)
             logger.debug(f"解析地址: {next_endpoint}")
             ip = util.getaddrinfo(next_endpoint)
+            self._next_domain += 1
         
         # 如果没有解析到IP,给出提示
         if ip == []:
@@ -342,14 +343,13 @@ class CheckAlive:
 
         else:
             logger.debug(f"没有更新地址: {ip}")
-            self._next_domain += 1
 
 
     def __next_domain(self, domain: str):
         prefix, suffix = domain.split(".", 1)
 
-        if self._next_domain > 10:
-            self._next_domain = 1
+        if self._next_domain >= 10:
+            self._next_domain = 0
 
         return f"{prefix}-{self._next_domain:02}.{suffix}"
 
