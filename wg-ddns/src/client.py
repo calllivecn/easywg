@@ -319,13 +319,9 @@ class CheckAlive:
         try:
             ip = ipaddress.ip_address(endpoint).exploded
         except ValueError:
-            if self._next_domain == 0:
-                logger.debug(f"解析地址: {endpoint}")
-                ip = util.getaddrinfo(endpoint)
-            else:
-                next_endpoint = self.__next_domain(endpoint)
-                logger.debug(f"解析地址: {next_endpoint}")
-                ip = util.getaddrinfo(next_endpoint)
+            next_endpoint = self.__next_domain(endpoint)
+            logger.debug(f"解析地址: {next_endpoint}")
+            ip = util.getaddrinfo(next_endpoint)
         
         # 如果没有解析到IP,给出提示
         if ip == []:
@@ -343,7 +339,6 @@ class CheckAlive:
             util.wg_peer_option(wg_name, peer["public_key"], peer)
 
             self.cur_real_ip = ip
-            self._next_domain = 0
 
         else:
             logger.debug(f"没有更新地址: {ip}")
