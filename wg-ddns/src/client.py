@@ -130,6 +130,9 @@ class CheckAlive:
         # self.update_peer_domain.set()
         self.cur_real_ip = ""
 
+        # 多域名检测标志
+        self._next_domain = 0
+
 
     def ping(self, sock: socket.socket, cpeer: PeerRaddr):
         """
@@ -172,6 +175,7 @@ class CheckAlive:
             if failed_count >= CHECK_FAILED_COUNT:
                 logger.warning(f"--> {raddr} 线路断开了...")
                 self.update_domain(peer.conf)
+                failed_count = 0
 
             ping.next()
 
@@ -315,8 +319,18 @@ class CheckAlive:
         try:
             ip = ipaddress.ip_address(endpoint).exploded
         except ValueError:
-            ip = util.getaddrinfo(endpoint)
-
+            if self._next_domain == 0:
+                logger.debug(f"解析地址: {endpoint}")
+                ip = util.getaddrinfo(endpoint)
+            else:
+                next_endpoint = self.__next_domain(endpoint)
+                logger.debug(f"解析地址: {next_endpoint}")
+                ip = util.getaddrinfo(next_endpoint)
+        
+        # 如果没有解析到IP,给出提示
+        if ip == []:
+            logger.warning(f"没有解析到IP.")
+            return
 
         if self.cur_real_ip != ip:
 
@@ -329,8 +343,20 @@ class CheckAlive:
             util.wg_peer_option(wg_name, peer["public_key"], peer)
 
             self.cur_real_ip = ip
+            self._next_domain = 0
+
         else:
             logger.debug(f"没有更新地址: {ip}")
+            self._next_domain += 1
+
+
+    def __next_domain(self, domain: str):
+        prefix, suffix = domain.split(".", 1)
+
+        if self._next_domain > 10:
+            self._next_domain = 1
+
+        return f"{prefix}-{self._next_domain:02}.{suffix}"
 
 
     def close(self):
@@ -431,7 +457,7 @@ def main():
     parse.add_argument("--server", metavar="server_ip", help="listen bind wg interface IP")
 
     # parse.add_argument("--conf", metavar="server_ip", help="listen bind wg interface IP")
-    parse.add_argument("conf", metavar="config", nargs="1", help="config")
+    parse.add_argument("conf", metavar="config", help="config")
 
     parse.add_argument("--parse", action="store_true", help=argparse.SUPPRESS)
 
