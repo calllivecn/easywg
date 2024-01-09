@@ -5,7 +5,7 @@ After=network-online.target
 [Service]
 Type=simple
 ExecStart=/usr/local/sbin/wg.pyz /etc/wgs/%i.toml
-ExecStop=/usr/sbin/kill $MAINPID
+ExecStop=/usr/bin/bash -c "kill $MAINPID"
 
 [Install]
 WantedBy=multi-user.target
