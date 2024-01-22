@@ -1,5 +1,5 @@
 Django==3.1.13
 pyroute2==0.5.12
 Jinja2==2.11.3
-Pillow==10.0.1
+Pillow==10.2.0
 qrcode==6.1
