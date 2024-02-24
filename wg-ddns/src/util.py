@@ -86,7 +86,7 @@ def getaddrinfo(domainname):
     try:
         addrinfo = socket.getaddrinfo(domainname, 0, type=socket.SOCK_DGRAM)
     except socket.gaierror:
-        logger.warning(f"{domainname} 没有解析到ip")
+        logger.warning(f"{domainname} 没有解析到ip; 可能是系统没有网络连接")
         return []
     except socket.timeout:
         logger.warning(f"{domainname} 解析超时")

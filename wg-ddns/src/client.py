@@ -10,6 +10,7 @@ import copy
 import queue
 import socket
 import atexit
+import signal
 import logging
 import argparse
 import ipaddress
@@ -360,6 +361,7 @@ class CheckAlive:
             sock.close()
 
 
+
 def server(conf):
     # 配置wg
     ifname = conf["ifname"]
@@ -375,6 +377,7 @@ def server(conf):
 
 
     atexit.register(lambda :util.ip_link_del_wg(wg_name))
+    signal.signal(signal.SIGTERM, lambda sig, frame: sys.exit(0))
 
     
     self_ipv4 = None
@@ -449,8 +452,7 @@ def main():
         epilog="https://github.com/calllivecn/easywg"
     )
 
-    parse.add_argument("--server", metavar="server_ip", help="listen bind wg interface IP")
-
+    # parse.add_argument("--server", metavar="server_ip", help="listen bind wg interface IP")
     # parse.add_argument("--conf", metavar="server_ip", help="listen bind wg interface IP")
     parse.add_argument("conf", metavar="config", help="config")
 
@@ -466,23 +468,18 @@ def main():
     global CHECK_TIMEOUT
     global CHECK_FAILED_COUNT
 
-    if args.server:
-        server(args.server)
-        sys.exit(0)
-    else:
-    
-        try:
-            # conf = loadconf(Path(sys.argv[1]))
-            conf = loadconf(Path(args.conf))
-        except Exception:
-            print("配置错误")
-            sys.exit(1)
+    try:
+        # conf = loadconf(Path(sys.argv[1]))
+        conf = loadconf(Path(args.conf))
+    except Exception:
+        print("配置错误")
+        sys.exit(1)
 
-        CHECK_PORT = conf.get("check_port", 19000)
-        CHECK_TIMEOUT = conf.get("check_timeout", 5)
-        CHECK_FAILED_COUNT = conf.get("check_failed_count", 6)
+    CHECK_PORT = conf.get("check_port", 19000)
+    CHECK_TIMEOUT = conf.get("check_timeout", 5)
+    CHECK_FAILED_COUNT = conf.get("check_failed_count", 6)
 
-        server(conf)
+    server(conf)
     
 
 
