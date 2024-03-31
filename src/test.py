@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # coding=utf-8
 # date 2022-08-17 01:58:54
-# author calllivecn <c-all@qq.com>
+# author calllivecn <calllivecn@outlook.com>
 
 from pyroute2 import (
     NDB,

@@ -2,7 +2,7 @@
 # coding=utf-8
 # date 2022-08-16 19:47:37
 # update 2023-08-16 01:54:15
-# author calllivecn <c-all@qq.com>
+# author calllivecn <calllivecn@outlook.com>
 
 import os
 import socket

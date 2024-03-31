@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # coding=utf-8
 # date 2023-09-13 20:06:16
-# author calllivecn <c-all@qq.com>
+# author calllivecn <calllivecn@outlook.com>
 
 
 import json

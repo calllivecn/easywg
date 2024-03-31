@@ -1,6 +1,6 @@
 #!/bin/bash
 # date 2022-08-29 21:17:45
-# author calllivecn <c-all@qq.com>
+# author calllivecn <calllivecn@outlook.com>
 
 DB="/tmp/init-test.db"
 

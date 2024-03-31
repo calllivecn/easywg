@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # coding=utf-8
 # date 2022-08-27 14:33:33
-# author calllivecn <c-all@qq.com>
+# author calllivecn <calllivecn@outlook.com>
 
 
 import sqlite3
