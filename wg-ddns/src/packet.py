@@ -16,7 +16,6 @@ from typing import (
     # Self
     Type,
     TypeVar,
-    Union,
 )
 
 Self = TypeVar("Self")
@@ -82,8 +81,7 @@ class Ping(struct.Struct):
         self.pack_into(self.buf, 0, self.typ, self.seq)
     
 
-    # def __eq__(self, other: bytes|Type["Ping"]): # py3.10 才支持
-    def __eq__(self, other: Union[bytes, Type["Ping"]]):
+    def __eq__(self, other: bytes|Type["Ping"]): # py3.10 才支持
         if isinstance(other, bytes):
             return self.buf == other
 

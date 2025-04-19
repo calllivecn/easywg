@@ -22,10 +22,6 @@ from dataclasses import dataclass
 
 from typing import (
     Any,
-    Tuple,
-    Dict,
-    Optional,
-    Union,
 )
 
 
@@ -86,14 +82,14 @@ def check_alive(server_wg_ip):
 @dataclass
 class CPeer:
     q: queue.Queue
-    conf: Union[Dict, None] = None
+    conf: dict | None = None
 
 
 Address = Any
 if sys.version_info < (3, 10):
     PeerRaddr = Any
 else:
-    PeerRaddr = Dict[tuple[PacketType, str, int], CPeer]
+    PeerRaddr = dict[tuple[PacketType, str, int], CPeer]
 
 def serverhub_daemon(wg_ip):
     pass
@@ -469,7 +465,6 @@ def main():
     global CHECK_FAILED_COUNT
 
     try:
-        # conf = loadconf(Path(sys.argv[1]))
         conf = loadconf(Path(args.conf))
     except Exception:
         print("配置错误")
