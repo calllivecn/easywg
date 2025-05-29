@@ -4,7 +4,7 @@ After=network-online.target
 
 [Service]
 Type=simple
-ExecStart=/usr/local/sbin/wg.pyz /etc/wgs/%i.toml
+ExecStart=/usr/local/sbin/wgpy /etc/wgs/%i.toml
 ExecStop=/usr/bin/bash -c "kill $MAINPID"
 
 [Install]

@@ -61,8 +61,7 @@ def server(conf):
 
     checkalive = CheckAlive()
     checkalive.conf = conf
-    th_server = funcs.start_thread(target=checkalive.server, args=(self_ipv6, self_ipv4), name="CheckAlive.server()")
-    logger.debug(f"CheckAlive 线程已启动: {th_server.name}")
+    funcs.start_thread(target=checkalive.server, args=(self_ipv6, self_ipv4), name="CheckAlive.server()")
 
     for wg_conf in conf["peers"]:
 
@@ -106,6 +105,4 @@ def server(conf):
             logger.debug(f"为 {wg_check_ip}:{wg_check_port} 启动 checkalive")
             funcs.start_thread(target=checkalive.ping, args=(checkalive.sock6, cpeer), name=f"check_alive-{wg_check_ip}")
 
-    logger.debug(f"{th_server=}")
-    th_server.join()
-    logger.debug(f"{th_server.name} 线程已结束")
+    logger.debug(f"server 线程已结束")

@@ -24,11 +24,11 @@ from server import server
 def main():
 
     parse = Argument(
-        usage="%(prog)s",
+        usage="%(prog)s <*.toml>",
         epilog="https://github.com/calllivecn/easywg",
     )
 
-    parse.add_argument("--server", action="store_true", help="启动服务端")
+    # parse.add_argument("--server", action="store_true", help="启动服务端")
 
     parse.add_argument("--genkey", action="store_true", help="生成密钥对")
     parse.add_argument("--pubkey", metavar="<private_key>", action="store", help="从指定私钥生成公钥")
@@ -51,20 +51,8 @@ def main():
     if args.debug:
         logger.setLevel(DEBUG)
 
-    if args.server:
-        try:
-            conf = loadconf(args.conf)
-        except Exception:
-            print("配置错误")
-            sys.exit(1)
 
-        funcs.CHECK_PORT = conf.get("check_port", 19000)
-        funcs.CHECK_TIMEOUT = conf.get("check_timeout", 5)
-        funcs.CHECK_FAILED_COUNT = conf.get("check_failed_count", 6)
-
-        server(conf)
-
-    elif args.genkey:
+    if args.genkey:
         privkey, pubkey = util.genkey()
         print(f"私钥: {privkey}")
         print(f"公钥: {pubkey}")
@@ -85,8 +73,17 @@ def main():
         wgshow.main()
 
     else:
-        parse.print_help()
-        sys.exit(0)
+        try:
+            conf = loadconf(args.conf)
+        except Exception:
+            print("配置错误")
+            sys.exit(1)
+
+        funcs.CHECK_PORT = conf.get("check_port", 19000)
+        funcs.CHECK_TIMEOUT = conf.get("check_timeout", 5)
+        funcs.CHECK_FAILED_COUNT = conf.get("check_failed_count", 6)
+
+        server(conf)
 
 if __name__ == "__main__":            
     main() 
