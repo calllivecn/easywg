@@ -86,10 +86,7 @@ class CPeer:
 
 
 Address = Any
-if sys.version_info < (3, 10):
-    PeerRaddr = Any
-else:
-    PeerRaddr = dict[tuple[PacketType, str, int], CPeer]
+PeerRaddr = dict[tuple[PacketType, str, int], CPeer]
 
 def serverhub_daemon(wg_ip):
     pass

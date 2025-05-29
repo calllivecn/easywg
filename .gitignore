@@ -16,6 +16,8 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 test/unit/coverage/
+wg-ddns/src/build/
+wg-ddns/src/dist/
 
 # Editor directories and files
 .idea
