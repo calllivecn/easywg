@@ -20,6 +20,9 @@ import subprocess
 from pathlib import Path
 from dataclasses import dataclass
 
+import tomllib
+
+
 from typing import (
     Any,
 )
@@ -29,11 +32,17 @@ import util
 from log import logger
 from packet import (
     PacketType,
-    Packet,
     Ping,
-    PacketTypeError,
 )
 
+
+"""
+# py3.11 之前的
+try:
+    import tomllib
+except ModuleNotFoundError:
+    import tomli as tomllib
+"""
 
 
 CHECK_PORT = 19000
@@ -46,10 +55,6 @@ LEVEL_DEBUG2 = logging.DEBUG - 1
 
 
 
-try:
-    import tomllib
-except ModuleNotFoundError:
-    import tomli as tomllib
 
 # 加载配置文件
 def loadconf(conf: Path):
