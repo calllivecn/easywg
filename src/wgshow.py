@@ -208,8 +208,8 @@ def main():
 
         for wg_kind in list_wg_list:
             wg_conf = ws.show_wg(wg_kind["ifname"])
-            logger.debug(f"""{"="*10} {wg_kind["ifname"]} {"="*10}""")
-            logger.debug("\n" + pprint.pformat(wg_conf))
+            print(f"""{"="*10} {wg_kind["ifname"]} {"="*10}""")
+            print("\n" + pprint.pformat(wg_conf))
     
 
 if __name__ == "__main__":

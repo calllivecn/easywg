@@ -85,21 +85,6 @@ class Ping(struct.Struct):
             return self.buf == other.buf
         
 
-
-
-class Packet(struct.Struct):
-    """
-    type: 1B
-    sender_pubkey: 32B
-    length: 4B
-    payload: ...
-    """
-
-    def __init__(self):
-        pass
-
-
-
 if __name__ == "__main__":
     ping = Ping()
     ping2 = Ping()

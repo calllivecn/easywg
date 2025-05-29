@@ -6,11 +6,6 @@
 
 import socket
 import ipaddress
-from subprocess import (
-    run,
-    PIPE,
-    CalledProcessError
-)
 
 # from nftables import Nftables
 
@@ -73,11 +68,12 @@ def getaddrinfo(domainname):
     return ip[0]
 
 ##################
-# 先使用命令方式生成密钥对，以后在添加 cryptography 生成方式
+# cryptography 方式生成密钥对
 ##################
 
-def genkey() -> str:
-    return WireGuardKeyGenerator().genkey()
+def genkey() -> tuple[str, str]:
+    wg = WireGuardKeyGenerator()
+    return wg.genkey(), wg.genpub()
 
 def pubkey(private_key: str) -> str:
     """
@@ -90,7 +86,7 @@ def pubkey(private_key: str) -> str:
 
     return wg.genpub()
 
-def genpsk():
+def genpsk() -> str:
     """
     生成预共享密钥
     return: str, base64 编码的预共享密钥
@@ -98,6 +94,7 @@ def genpsk():
     return WireGuardKeyGenerator().genpsk()
 
 
+"""
 ############
 # ip route、　ip rule 、 命令行版本
 ###########
@@ -117,6 +114,7 @@ def unset_global_route_wg(ifname, table_id, fwmark):
     ip(f"ip route del default dev {ifname} table {table_id}")
     ip(f"ip rule del not fwmark {fwmark} table {table_id}")
     ip(f"ip rule del table main suppress_prefixlength 0")
+"""
 
 
 ############

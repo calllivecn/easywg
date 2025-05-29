@@ -2,6 +2,7 @@
 import sys
 import logging
 
+DEBUG = logging.DEBUG
 
 class Log(logging.Logger):
 
@@ -9,7 +10,6 @@ class Log(logging.Logger):
 
     def __init__(self, name="wgpy", level=logging.INFO):
         super().__init__(name, level)
-        # self.logger = logging.getLogger(name)
 
         formatter = logging.Formatter("%(asctime)s %(levelname)s %(filename)s:%(funcName)s:%(lineno)d %(message)s", datefmt="%Y-%m-%d-%H:%M:%S")
 
@@ -20,6 +20,8 @@ class Log(logging.Logger):
         self.addHandler(self.consoleHandler)
         self.setLevel(level)
 
+    def debug2(self, msg):
+        self.log(self.DEBUG2, msg)
 
 logger = Log()
 

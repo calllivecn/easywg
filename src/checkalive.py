@@ -1,25 +1,12 @@
-#!/usr/bin/env python3
-# coding=utf-8
-# date 2023-08-16 01:55:59
-# author calllivecn <calllivecn@outlook.com>
 
-
-import sys
 import time
 import copy
 import queue
 import socket
-import atexit
-import signal
-import logging
-import argparse
-import ipaddress
 import threading
+import ipaddress
 import selectors
-from pathlib import Path
 from dataclasses import dataclass
-
-import tomllib
 
 import util
 from log import logger
@@ -28,27 +15,11 @@ from packet import (
     Ping,
 )
 
-
-"""
-# py3.11 之前的
-try:
-    import tomllib
-except ModuleNotFoundError:
-    import tomli as tomllib
-"""
-
-
-CHECK_PORT = 19000
-CHECK_TIMEOUT = 5
-CHECK_FAILED_COUNT = 6
-
-LEVEL_DEBUG2 = logging.DEBUG - 1
-
-
-# 加载配置文件
-def loadconf(conf: Path):
-    with open(conf, "rb") as f:
-        return tomllib.load(f)
+__all__ = [
+    "CheckAlive",
+    "PeerRaddr",
+    "CPeer",
+]
 
 
 @dataclass
@@ -58,16 +29,6 @@ class CPeer:
 
 
 PeerRaddr = dict[tuple[PacketType, str, int], CPeer]
-
-def serverhub_daemon(wg_ip):
-    pass
-
-
-def start_thread(*args, **kwargs):
-    th = threading.Thread(*args, **kwargs)
-    th.start()
-    return th
-
 
 # 在线检测 内置版本
 class CheckAlive:
@@ -239,7 +200,8 @@ class CheckAlive:
                     peer = self.peers.get(ping_peeraddr)
                     if peer is None:
                         self.peers[ping_peeraddr] = CPeer(queue.Queue(128))
-                        start_thread(target=self.server_ping, args=(sock, ping_peeraddr), name="server_ping check()")
+                        th = threading.Thread(target=self.server_ping, args=(sock, ping_peeraddr), name="server_ping check()")
+                        th.start()
 
                 elif typ == PacketType.PING_REPLY:
                     cpeer = self.peers.get(peeraddr)
@@ -321,131 +283,3 @@ class CheckAlive:
         for sock in self.socks:
             self.se.unregister(sock)
             sock.close()
-
-
-
-def server(conf):
-    # 配置wg
-    ifname = conf["ifname"]
-    wg_name = ifname["interface"]
-
-    # add wg
-    util.ip_link_add_wg(wg_name)
-
-    # set MTU
-    wg_mtu = int(ifname.get("MTU"))
-    if wg_mtu is not None:
-        util.ip_link_mtu(wg_name, wg_mtu)
-
-
-    atexit.register(lambda :util.ip_link_del_wg(wg_name))
-    signal.signal(signal.SIGTERM, lambda sig, frame: sys.exit(0))
-
-    
-    self_ipv4 = None
-    self_ipv6 = None
-    # 配置 wg 接口ip地址
-    for CIDR in ifname["address"]:
-        util.ip_addr_add(wg_name, CIDR)
-
-        ip = ipaddress.ip_address(CIDR.split("/")[0])
-        if ip.version == 4:
-            if self_ipv4 is None:
-                self_ipv4 = ip.exploded
-        elif ip.version == 6:
-            if self_ipv6 is None:
-                self_ipv6 = ip.exploded
-
-    util.wg_set(wg_name, ifname["private_key"], listen_port=ifname.get("listen_port"), fwmark=ifname.get("fwmark"))
-    logger.debug(f"配置接口：{wg_name}")
-
-    checkalive = CheckAlive()
-    checkalive.conf = conf
-    start_thread(target=checkalive.server, args=(self_ipv6, self_ipv4), name="CheckAlive.server()")
-
-    for wg_conf in conf["peers"]:
-
-        peer_conf = copy.deepcopy(wg_conf)
-        info = peer_conf["info"]
-        peer = peer_conf["peer"]
-        
-        endpoint_addr = peer.get("endpoint_addr")
-        if endpoint_addr is not None:
-            addr = util.getaddrinfo(endpoint_addr)
-
-            if len(addr) == 0:
-                logger.warning(f"没有查询到 {endpoint_addr} IP, 可能出错了。请检查")
-                continue
-
-            peer["endpoint_addr"] = addr
-        
-        logger.debug(f"配置peer: {peer}")
-        with util.WireGuard() as wg:
-            wg.set(wg_name, peer=peer)
-
-        
-        # 为每个peer 启动 checkalive
-        wg_check_ip = info.get("wg_check_ip")
-        if wg_check_ip:
-            wg_check_port = info.get("wg_check_port", 19000)
-
-            cpeer = (
-                PacketType.PING_REPLY,
-                wg_check_ip,
-                wg_check_port,
-                )
-
-            peer_value = CPeer(
-                queue.Queue(128),
-                wg_conf["peer"],
-            )
-
-            checkalive.peers[cpeer] = peer_value
-
-            logger.debug(f"为 {wg_check_ip}:{wg_check_port} 启动 checkalive")
-            start_thread(target=checkalive.ping, args=(checkalive.sock6, cpeer), name=f"check_alive-{wg_check_ip}")
-
-
-def main():
-
-    parse = argparse.ArgumentParser(
-        usage="%(prog)s",
-        epilog="https://github.com/calllivecn/easywg"
-    )
-
-    # parse.add_argument("--server", metavar="server_ip", help="listen bind wg interface IP")
-    # parse.add_argument("--conf", metavar="server_ip", help="listen bind wg interface IP")
-    parse.add_argument("conf", metavar="config", help="config")
-
-    parse.add_argument("--debug", action="store_true", help="debug mode")
-    parse.add_argument("--parse", action="store_true", help=argparse.SUPPRESS)
-
-    args = parse.parse_args()
-
-    if args.parse:
-        print(args)
-        sys.exit(0)
-    
-    if args.debug:
-        logger.setLevel(logging.DEBUG)
-
-    global CHECK_PORT
-    global CHECK_TIMEOUT
-    global CHECK_FAILED_COUNT
-
-    try:
-        conf = loadconf(Path(args.conf))
-    except Exception:
-        print("配置错误")
-        sys.exit(1)
-
-    CHECK_PORT = conf.get("check_port", 19000)
-    CHECK_TIMEOUT = conf.get("check_timeout", 5)
-    CHECK_FAILED_COUNT = conf.get("check_failed_count", 6)
-
-    server(conf)
-    
-
-
-if __name__ == "__main__":            
-    main() 
