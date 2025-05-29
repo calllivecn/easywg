@@ -106,4 +106,6 @@ def server(conf):
             logger.debug(f"为 {wg_check_ip}:{wg_check_port} 启动 checkalive")
             funcs.start_thread(target=checkalive.ping, args=(checkalive.sock6, cpeer), name=f"check_alive-{wg_check_ip}")
 
+    logger.debug(f"{th_server=}")
     th_server.join()
+    logger.debug(f"{th_server.name} 线程已结束")

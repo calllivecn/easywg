@@ -14,9 +14,6 @@
 interface = "wg-pyz"
 private_key = "private key"
 
-# 可选
-# preshared_key = "" 
-
 # 可选，在有防火墙的情况下，还是指定下端口，并在防火墙上开放对应的UDP端口
 # listen_port = 18000
 
