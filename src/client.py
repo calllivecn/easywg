@@ -16,7 +16,6 @@ import argparse
 import ipaddress
 import threading
 import selectors
-import subprocess
 from pathlib import Path
 from dataclasses import dataclass
 
@@ -52,28 +51,6 @@ def loadconf(conf: Path):
         return tomllib.load(f)
 
 
-# 在线检测 cmd 版本
-def check_alive(server_wg_ip):
-    failed_count = 0
-    while True:
-        try:
-            subprocess.run(f"ping -W 5 -c 1 {server_wg_ip}".split(), stdout=subprocess.PIPE, check=True)
-        except subprocess.CalledProcessError:
-            logger.info(f"{server_wg_ip} 检测好像断开了...")
-            failed_count += 1
-            if failed_count >= 3:
-                logger.warning(f"{server_wg_ip} 线路断开了...")
-                return
-            else:
-                continue
-
-        if failed_count > 0:
-            logger.info(f"{server_wg_ip} 检测恢复...")
-
-        failed_count = 0
-        time.sleep(CHECK_TIMEOUT)
-
-
 @dataclass
 class CPeer:
     q: queue.Queue
@@ -90,8 +67,6 @@ def start_thread(*args, **kwargs):
     th = threading.Thread(*args, **kwargs)
     th.start()
     return th
-
-
 
 
 # 在线检测 内置版本
@@ -240,16 +215,16 @@ class CheckAlive:
             for key, event in self.se.select():
                 sock = key.fileobj
                 data, addr = sock.recvfrom(8192)
-                logger.log(LEVEL_DEBUG2, f"UDP: 接收到的 {addr=} {data=}")
+                logger.debug(f"UDP: 接收到的 {addr=} {data=}")
 
                 # 要是指定类型的数据
                 try:
                     typ = PacketType(data[0])
                 except ValueError:
-                    logger.debug(f"未知类型数据丢弃. {data=}")
+                    logger.info(f"未知类型数据丢弃. {data=}")
                     continue
 
-                peeraddr = (typ, addr[0], addr[1]) # 
+                peeraddr = (typ, addr[0], addr[1])
 
                 if typ == PacketType.PING:
                     ping = Ping.reply(data)
@@ -432,7 +407,6 @@ def server(conf):
 
 
 def main():
-    # 怎么没用 ？ logger.setLevel(logging.DEBUG)
 
     parse = argparse.ArgumentParser(
         usage="%(prog)s",
@@ -443,6 +417,7 @@ def main():
     # parse.add_argument("--conf", metavar="server_ip", help="listen bind wg interface IP")
     parse.add_argument("conf", metavar="config", help="config")
 
+    parse.add_argument("--debug", action="store_true", help="debug mode")
     parse.add_argument("--parse", action="store_true", help=argparse.SUPPRESS)
 
     args = parse.parse_args()
@@ -450,6 +425,9 @@ def main():
     if args.parse:
         print(args)
         sys.exit(0)
+    
+    if args.debug:
+        logger.setLevel(logging.DEBUG)
 
     global CHECK_PORT
     global CHECK_TIMEOUT

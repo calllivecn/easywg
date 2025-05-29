@@ -1,14 +1,12 @@
 [Unit]
-Description=easy WireGuard client or shell
+Description=easy WireGuard client wg.pyz
 After=network-online.target
 
 [Service]
 Type=simple
-ExecStart=/usr/bin/bash /etc/wgs/%i.sh up
-ExecStop=/usr/bin/bash /etc/wgs/%i.sh down
-Restart=on-failure
-RestartSec=30s
-RemainAfterExit=yes
+ExecStart=/usr/local/sbin/wg.pyz /etc/wgs/%i.toml
+ExecStop=/usr/bin/bash -c "kill $MAINPID"
 
 [Install]
 WantedBy=multi-user.target
+

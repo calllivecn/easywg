@@ -1,0 +1,14 @@
+[Unit]
+Description=easy WireGuard client or shell
+After=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/bash /etc/wgs/%i.sh up
+ExecStop=/usr/bin/bash /etc/wgs/%i.sh down
+Restart=on-failure
+RestartSec=30s
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

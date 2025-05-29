@@ -5,6 +5,11 @@
 - 需要py3.12及以上
 - pip install cryptography
 - pip install pyroute2
+- 需要在对应发行版上安装python3-nftables包，才能使用VPN模式。
+    ```shell
+    ubuntu:
+    apt install python3-nftables
+    ```
 
 
 ### 工作方式说明

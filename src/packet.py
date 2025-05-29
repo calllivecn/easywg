@@ -14,8 +14,6 @@ import struct
 
 from typing import (
     Self,
-    Type,
-    TypeVar,
 )
 
 
@@ -73,7 +71,7 @@ class Ping(struct.Struct):
     
     def next(self):
         self.seq += 1
-        if self.seq > sys.maxsize:
+        if self.seq >= sys.maxsize:
             self.seq = 0
 
         self.pack_into(self.buf, 0, self.typ, self.seq)
