@@ -73,7 +73,7 @@ def getaddrinfo(domainname):
 
 def genkey() -> tuple[str, str]:
     wg = WireGuardKeyGenerator()
-    return wg.genkey(), wg.genpub()
+    return wg.genkey(), wg.pubkey()
 
 def pubkey(private_key: str) -> str:
     """
@@ -82,9 +82,7 @@ def pubkey(private_key: str) -> str:
     return: str, base64 编码的公钥
     """
     wg = WireGuardKeyGenerator()
-    wg._private_key_raw = private_key
-
-    return wg.genpub()
+    return wg.pubkey(private_key)
 
 def genpsk() -> str:
     """

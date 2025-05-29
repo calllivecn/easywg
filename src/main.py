@@ -35,7 +35,7 @@ def main():
     parse.add_argument("--server", action="store_true", help="启动服务端")
 
     parse.add_argument("--genkey", action="store_true", help="生成密钥对")
-    parse.add_argument("--pubkey", action="store", help="从指定私钥生成公钥")
+    parse.add_argument("--pubkey", metavar="<private_key>", action="store", help="从指定私钥生成公钥")
     parse.add_argument("--genpsk", action="store_true", help="生成预共享密钥")
 
     parse.add_argument("--show", action="store_true", help="查看当前wg接口")
@@ -78,12 +78,8 @@ def main():
         print(f"公钥: {pubkey}")
 
     elif args.pubkey:
-
-        if not args.pubkey:
-            print("请指定私钥")
-            sys.exit(1)
         try:
-            pubkey = util.pubkey(args.genpub)
+            pubkey = util.pubkey(args.pubkey)
             print(f"公钥: {pubkey}")
         except Exception as e:
             print(f"生成公钥失败: {e}")

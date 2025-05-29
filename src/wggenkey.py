@@ -11,7 +11,7 @@ class WireGuardKeyGenerator:
         初始化 WireGuardKeyGenerator。
         私钥不会立即生成（直到调用 genkey() 方法）。
         """
-        self._private_key_raw: bytes | None = None
+        self._private_key_raw: bytes = os.urandom(32)
         self._public_key_raw: bytes | None = None
 
     def genkey(self) -> str:
@@ -20,21 +20,27 @@ class WireGuardKeyGenerator:
         然后返回其 Base64 编码表示。
         这等同于 `wg genkey` 命令。
         """
-        self._private_key_raw = os.urandom(32)
         # 生成私钥时自动派生并存储公钥
-        private_key_obj = x25519.X25519PrivateKey.from_private_bytes(self._private_key_raw)
-        public_key_obj = private_key_obj.public_key()
-        self._public_key_raw = public_key_obj.public_bytes_raw()
+        self._private_key_obj = x25519.X25519PrivateKey.from_private_bytes(self._private_key_raw)
+        self._private_key_raw = self._private_key_obj.private_bytes_raw()
+
         return base64.b64encode(self._private_key_raw).decode('utf-8')
 
-    def genpub(self) -> str:
+    def pubkey(self, private_key: str=None) -> str:
         """
         返回与内部存储私钥对应的 Base64 编码公钥。
         调用此方法前必须先调用 `genkey()`。
         这等同于 `wg pubkey` 命令。
         """
-        if self._private_key_raw is None or self._public_key_raw is None:
-            raise ValueError("私钥尚未生成。请先调用 genkey()。")
+        if private_key is None:
+            pubkey_obj = self._private_key_obj.public_key()
+        else:
+            # 如果提供了私钥，则从提供的 Base64 编码私钥生成公钥
+            private_key_bytes = base64.b64decode(private_key.encode('utf-8'))
+            pubkey_obj = x25519.X25519PrivateKey.from_private_bytes(private_key_bytes).public_key()
+        
+        self._public_key_raw = pubkey_obj.public_bytes_raw()
+        
         return base64.b64encode(self._public_key_raw).decode('utf-8')
 
     @staticmethod
