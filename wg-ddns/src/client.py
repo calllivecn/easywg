@@ -22,12 +22,6 @@ from dataclasses import dataclass
 
 import tomllib
 
-
-from typing import (
-    Any,
-)
-
-
 import util
 from log import logger
 from packet import (
@@ -49,11 +43,7 @@ CHECK_PORT = 19000
 CHECK_TIMEOUT = 5
 CHECK_FAILED_COUNT = 6
 
-
 LEVEL_DEBUG2 = logging.DEBUG - 1
-
-
-
 
 
 # 加载配置文件
@@ -90,7 +80,6 @@ class CPeer:
     conf: dict | None = None
 
 
-Address = Any
 PeerRaddr = dict[tuple[PacketType, str, int], CPeer]
 
 def serverhub_daemon(wg_ip):

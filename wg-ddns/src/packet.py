@@ -13,12 +13,10 @@ import enum
 import struct
 
 from typing import (
-    # Self
+    Self,
     Type,
     TypeVar,
 )
-
-Self = TypeVar("Self")
 
 
 class PacketType(enum.IntEnum):
@@ -50,7 +48,7 @@ class Ping(struct.Struct):
     
 
     @staticmethod
-    def reply(packet: bytes) -> Type["Ping"]:
+    def reply(packet: bytes) -> Self:
 
         p = Ping()
 
@@ -67,7 +65,7 @@ class Ping(struct.Struct):
     
     # @classmethod
     @staticmethod
-    def server_reply(packet: bytes) -> Type["Ping"]:
+    def server_reply(packet: bytes) -> Self:
         p = Ping(PacketType.SERVER_PING_REPLY)
         typ, p.seq = p.unpack(packet[:p.size])
         return p
@@ -81,7 +79,7 @@ class Ping(struct.Struct):
         self.pack_into(self.buf, 0, self.typ, self.seq)
     
 
-    def __eq__(self, other: bytes|Type["Ping"]): # py3.10 才支持
+    def __eq__(self, other: bytes|Self):
         if isinstance(other, bytes):
             return self.buf == other
 
@@ -104,7 +102,6 @@ class Packet(struct.Struct):
 
 
 
-
 if __name__ == "__main__":
     ping = Ping()
     ping2 = Ping()
@@ -115,3 +112,4 @@ if __name__ == "__main__":
     import struct
     bi = struct.pack("!BQ", 1, 1)
     print(ping.buf, ping == bi)
+

@@ -4,9 +4,7 @@
 # update 2023-08-16 01:54:15
 # author calllivecn <calllivecn@outlook.com>
 
-import os
 import socket
-import logging
 import ipaddress
 from subprocess import (
     run,
@@ -23,58 +21,14 @@ from pyroute2 import (
 )
 
 
-logger = logging.getLogger("wg-pyz")
+from log import logger
+from wggenkey import WireGuardKeyGenerator
 
 
 ##################
 # ~~dns 直接查询，避免系统缓存的影响。~~ 不行哦，缓存的是你的上游nameserver.
 # 命令行版本
 ##################
-
-# def dnsquery(domainname, dnsserver):
-def dnsquery(domainname):
-    """
-    只需要处理返回一个ip的情况
-    return: [] or ["ip1"]
-    """
-
-    # ipv4
-    try:
-        # p = run(["dig", "+short", f"@{dnsserver}", domainname, "A"], stdout=PIPE, text=True, check=True)
-        p = run(["dig", "+short", domainname, "A"], stdout=PIPE, text=True, check=True)
-    except CalledProcessError as e:
-        logger.warning(f"查询 {domainname} 域名异常: {e}")
-        ipv4 = []
-    else:
-        ipv4 = p.stdout.strip().split()
-
-    # ipv6
-    try:
-        p = run(["dig", "+short", domainname, "AAAA"], stdout=PIPE, text=True, check=True)
-    except CalledProcessError as e:
-        logger.warning(f"查询 {domainname} 域名异常: {e}")
-        ipv6 = []
-    
-    else:
-        ipv6 = p.stdout.strip().split()
-
-
-    ip  = ipv4 + ipv6
-    """
-    if len(ip) != 1:
-        logger.warning(f"在此应用场景下，域名只能对应一个ip。ipv4 + ipv6 也只需要一个")
-
-    return ip[0]
-    """
-    if len(ip) == 0:
-        logger.warning(f"没有查询到 {domainname} IP")
-        return []
-    elif len(ip) > 1:
-        logger.warning(f"没有查询到多个IP, 这个场景下不应该, 请删除多余的记录只保留一个。")
-        return []
-
-    return ip[0]
-
 
 # 查询dns -> ip
 def getaddrinfo(domainname):
@@ -122,20 +76,27 @@ def getaddrinfo(domainname):
 # 先使用命令方式生成密钥对，以后在添加 cryptography 生成方式
 ##################
 
-def genkey():
-    # 3.7 later
-    p = run("wg genkey".split(), stdout=PIPE, text=True, check=True)
-    # 3.6
-    # p = run("wg genkey".split(), stdout=PIPE, universal_newlines=True, check=True)
-    return p.stdout.rstrip(os.linesep)
+def genkey() -> str:
+    return WireGuardKeyGenerator().genkey()
 
-def pubkey(private_key):
-    p = run("wg pubkey".split(), input=private_key, stdout=PIPE, text=True, check=True)
-    return p.stdout.rstrip(os.linesep)
+def pubkey(private_key: str) -> str:
+    """
+    生成公钥
+    private_key: str, base64 编码的私钥
+    return: str, base64 编码的公钥
+    """
+    wg = WireGuardKeyGenerator()
+    wg._private_key_raw = private_key
+
+    return wg.genpub()
 
 def genpsk():
-    p = run("wg genpsk".split(), stdout=PIPE, text=True, check=True)
-    return p.stdout.rstrip(os.linesep)
+    """
+    生成预共享密钥
+    return: str, base64 编码的预共享密钥
+    """
+    return WireGuardKeyGenerator().genpsk()
+
 
 ############
 # ip route、　ip rule 、 命令行版本
@@ -156,6 +117,83 @@ def unset_global_route_wg(ifname, table_id, fwmark):
     ip(f"ip route del default dev {ifname} table {table_id}")
     ip(f"ip rule del not fwmark {fwmark} table {table_id}")
     ip(f"ip rule del table main suppress_prefixlength 0")
+
+
+############
+# ip route、　ip rule 、 pyroute2 版本
+###########
+
+def set_global_route_wg_pyroute2(ifname: str, table_id: int, fwmark: int):
+    """
+    使用 pyroute2 设置全局路由和策略路由。
+    对应命令行：
+    ip route add default dev <ifname> table <table_id>
+    ip rule add not fwmark <fwmark> table <table_id>
+    ip rule add table main suppress_prefixlength 0
+    """
+    with IPRoute() as ipr:
+        # 添加默认路由到指定的路由表
+        # 命令: ip route add default dev <ifname> table <table_id>
+        ipr.route('add',
+                  dst='default',
+                  oif=ipr.link_lookup(ifname=ifname)[0],  # 获取接口索引
+                  table=table_id)
+        logger.debug2(f"Added default route via {ifname} to table {table_id}")
+
+        # 添加策略路由规则：非 fwmark 的流量使用指定的路由表
+        # 命令: ip rule add not fwmark <fwmark> table <table_id>
+        ipr.rule('add',
+                 priority=1000,  # 规则的优先级，确保它在其他规则之前生效
+                 # 这是一个 'not' 匹配，需要使用 'not_fwmark' 属性
+                 not_fwmark=fwmark,
+                 table=table_id)
+        logger.debug2(f"Added rule: not fwmark {fwmark} -> table {table_id}")
+
+        # 添加策略路由规则：抑制 main 表的 prefixlength 0 (即默认路由)
+        # 这通常用于确保自定义路由表生效，而不会被 main 表的默认路由干扰
+        # 命令: ip rule add table main suppress_prefixlength 0
+        ipr.rule('add',
+                 priority=2000,  # 确保在自定义规则之后
+                 table='main',
+                 suppress_prefixlength=0)
+        logger.debug2("Added rule: table main suppress_prefixlength 0")
+
+def unset_global_route_wg_pyroute2(ifname: str, table_id: int, fwmark: int):
+    """
+    使用 pyroute2 取消设置全局路由和策略路由。
+    对应命令行：
+    ip route del default dev <ifname> table <table_id>
+    ip rule del not fwmark <fwmark> table <table_id>
+    ip rule del table main suppress_prefixlength 0
+    """
+    with IPRoute() as ipr:
+        # 删除默认路由
+        # 命令: ip route del default dev <ifname> table <table_id>
+        try:
+            ipr.route('del',
+                      dst='default',
+                      oif=ipr.link_lookup(ifname=ifname)[0],
+                      table=table_id)
+            logger.debug2(f"Deleted default route via {ifname} from table {table_id}")
+
+        # 删除策略路由规则：非 fwmark 的流量使用指定的路由表
+        # 命令: ip rule del not fwmark <fwmark> table <table_id>
+            ipr.rule('del',
+                     priority=1000, # 删除时也需要指定优先级，或者其他唯一标识
+                     not_fwmark=fwmark,
+                     table=table_id)
+            logger.debug2(f"Deleted rule: not fwmark {fwmark} -> table {table_id}")
+
+        # 删除策略路由规则：抑制 main 表的 prefixlength 0
+        # 命令: ip rule del table main suppress_prefixlength 0
+            ipr.rule('del',
+                     priority=2000, # 删除时也需要指定优先级
+                     table='main',
+                     suppress_prefixlength=0)
+            logger.debug2("Deleted rule: table main suppress_prefixlength 0")
+        except Exception as e:
+            logger.debug2(f"Error deleting route: {e}")
+
 
 
 ##################
@@ -295,11 +333,11 @@ def getifname_ip(ndb, ifname):
 
 
 # 测试当前网络环境能使用ipv6不
-def try_ipv6_route(ip):
+def try_ipv6_route(ip) -> bool:
     sock = socket.socket(socket.AF_INET6, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
     try:
-        # sock.connect(("2400:3200:baba::1", 2022))
-        sock.connect((ip, 2022))
+        # sock.connect(("2400:3200:baba::1", 19000))
+        sock.connect((ip, 19000))
         return True
     except OSError:
         # 网络不可以达
@@ -349,9 +387,6 @@ def del_route(nets):
         r = ndb.routes[nets]
         r.remove()
         r.commit()
-
-
-# 给 client 实现的VPN mode, 才需要实现策略路由
 
 
 
@@ -466,7 +501,7 @@ def wg_delete_peer(ifname, pubkey):
 def wg_peer_option(ifname, peer_pubkey, opt_val: dict):
     """
     eg: opt_val {"endpoint_addr": "1.2.3.4"}
-    每次重新设置的时候都得加上allowed_ips ? 那之后其他参数是不是也要添加？
+    ~~每次重新设置的时候都得加上allowed_ips ? 那之后其他参数是不是也要添加？~~
     是的每次，重设置都要添加是所有必须的参数
     """
     opt_val["public_key"] = peer_pubkey
@@ -475,8 +510,6 @@ def wg_peer_option(ifname, peer_pubkey, opt_val: dict):
         wg.set(ifname, peer=opt_val)
 
     
-# 查看wg 配置信息
-
 
 ###########
 #
@@ -563,7 +596,7 @@ def test():
     # print(ip_list_all(ndb))
 
     print("="*10, "ip addr ifname:", "="*10)
-    print(ip_addr_ifname(ndb, "wg-pyz"))
+    print(ip_addr_ifname(ndb, "wgpy"))
 
     # for ip_addrs in ip_addr_list():
     #     msg = pprint.pformat(ip_addrs)

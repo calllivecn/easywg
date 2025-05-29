@@ -1,5 +1,11 @@
 # server 使用 DDNS， 测试并试用和 client 的稳定性。这里是可行性研究!
 
+## 依赖项：
+
+- 需要py3.12及以上
+- pip install cryptography
+- pip install pyroute2
+
 
 ### 工作方式说明
 
