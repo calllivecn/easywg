@@ -3,7 +3,6 @@ import time
 import copy
 import queue
 import socket
-import threading
 import ipaddress
 import selectors
 from dataclasses import dataclass
@@ -14,6 +13,7 @@ from packet import (
     PacketType,
     Ping,
 )
+import funcs
 
 __all__ = [
     "CheckAlive",
@@ -41,6 +41,9 @@ class CheckAlive:
         self.socks = []
         self.sock4 = None
         self.sock6 = None
+
+        # 有个时候，socket还没初始化完？使用event解决？
+        self.event_server_ping = funcs.get_event()
 
         self.peers: PeerRaddr = {}
 
@@ -77,11 +80,11 @@ class CheckAlive:
             sock.sendto(ping.buf, raddr)
             while True:
                 try:
-                    data = q.get(timeout=CHECK_TIMEOUT)
+                    data = q.get(timeout=funcs.CHECK_TIMEOUT)
                 except queue.Empty:
                     # 超时
                     failed_count += 1
-                    logger.info(f"{raddr} 检测线路时丢包 {failed_count}/{CHECK_FAILED_COUNT}...")
+                    logger.info(f"{raddr} 检测线路时丢包 {failed_count}/{funcs.CHECK_FAILED_COUNT}...")
                     break
 
                 
@@ -96,23 +99,28 @@ class CheckAlive:
                 else:
                     logger.debug(f"可能收到了乱序包: {data}, 继续接收...")
 
-            if failed_count >= CHECK_FAILED_COUNT:
+            if failed_count >= funcs.CHECK_FAILED_COUNT:
                 logger.warning(f"--> {raddr} 线路断开了...")
                 self.update_domain(peer.conf)
                 failed_count = 0
 
             ping.next()
 
-            time.sleep(CHECK_TIMEOUT)
+            time.sleep(funcs.CHECK_TIMEOUT)
 
 
     def server_ping(self, sock: socket.socket, cpeer: PeerRaddr):
         """
         peer 端被动检测
         """
+        logger.debug(f"等待 server 初始化完成: {self.event_server_ping} ...")
+        self.event_server_ping.wait()
+        logger.debug(f"server 初始化完成: {self.event_server_ping}")
+
         peer = self.peers[cpeer]
         raddr = (cpeer[1], cpeer[2])
         logger.debug(f"添加 {raddr} check...")
+
 
         ping = Ping(PacketType.SERVER_PING)
 
@@ -123,11 +131,11 @@ class CheckAlive:
             sock.sendto(ping.buf, raddr)
             while True:
                 try:
-                    data = peer.q.get(timeout=CHECK_TIMEOUT)
+                    data = peer.q.get(timeout=funcs.CHECK_TIMEOUT)
                 except queue.Empty:
                     # 超时
                     failed_count += 1
-                    logger.info(f"{raddr} 检测线路时丢包 {failed_count}/{CHECK_FAILED_COUNT}...")
+                    logger.info(f"{raddr} 检测线路时丢包 {failed_count}/{funcs.CHECK_FAILED_COUNT}...")
                     break
 
                 
@@ -142,7 +150,7 @@ class CheckAlive:
                 else:
                     logger.debug(f"可能收到了乱序包: {data}, 继续接收...")
 
-            if failed_count >= CHECK_FAILED_COUNT:
+            if failed_count >= funcs.CHECK_FAILED_COUNT:
                 logger.warning(f" --> {raddr} 线路断开了...")
                 # logger.log(LEVEL_DEBUG2 ,f"{raddr} 退出")
                 logger.debug(f"{raddr} 退出")
@@ -151,14 +159,14 @@ class CheckAlive:
 
             ping.next()
 
-            time.sleep(CHECK_TIMEOUT)
+            time.sleep(funcs.CHECK_TIMEOUT)
 
 
     def server(self, wg_ipv6, wg_ipv4=None):
         if wg_ipv4 is not None:
             sock4 = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
             sock4.setblocking(False)
-            sock4.bind((wg_ipv4, CHECK_PORT))
+            sock4.bind((wg_ipv4, funcs.CHECK_PORT))
             self.se.register(sock4, selectors.EVENT_READ)
             self.socks.append(sock4)
             self.sock4 = sock4
@@ -166,9 +174,11 @@ class CheckAlive:
 
         sock6 = socket.socket(socket.AF_INET6, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
         sock6.setblocking(False)
-        sock6.bind((wg_ipv6, CHECK_PORT))
+        sock6.bind((wg_ipv6, funcs.CHECK_PORT))
         self.socks.append(sock6)
         self.sock6 = sock6
+
+        self.event_server_ping.set()
 
         self.se.register(sock6, selectors.EVENT_READ)
 
@@ -200,8 +210,7 @@ class CheckAlive:
                     peer = self.peers.get(ping_peeraddr)
                     if peer is None:
                         self.peers[ping_peeraddr] = CPeer(queue.Queue(128))
-                        th = threading.Thread(target=self.server_ping, args=(sock, ping_peeraddr), name="server_ping check()")
-                        th.start()
+                        funcs.start_thread(target=self.server_ping, args=(sock, ping_peeraddr), name="server_ping check()")
 
                 elif typ == PacketType.PING_REPLY:
                     cpeer = self.peers.get(peeraddr)

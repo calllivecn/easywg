@@ -11,6 +11,7 @@ from log import (
     logger,
     DEBUG,
 )
+import funcs
 from funcs import (
     Argument,
     loadconf,
@@ -18,11 +19,6 @@ from funcs import (
 )
 import util
 from server import server
-
-
-CHECK_PORT = 19000
-CHECK_TIMEOUT = 5
-CHECK_FAILED_COUNT = 6
 
 
 def main():
@@ -55,10 +51,6 @@ def main():
     if args.debug:
         logger.setLevel(DEBUG)
 
-    global CHECK_PORT
-    global CHECK_TIMEOUT
-    global CHECK_FAILED_COUNT
-
     if args.server:
         try:
             conf = loadconf(args.conf)
@@ -66,9 +58,9 @@ def main():
             print("配置错误")
             sys.exit(1)
 
-        CHECK_PORT = conf.get("check_port", 19000)
-        CHECK_TIMEOUT = conf.get("check_timeout", 5)
-        CHECK_FAILED_COUNT = conf.get("check_failed_count", 6)
+        funcs.CHECK_PORT = conf.get("check_port", 19000)
+        funcs.CHECK_TIMEOUT = conf.get("check_timeout", 5)
+        funcs.CHECK_FAILED_COUNT = conf.get("check_failed_count", 6)
 
         server(conf)
 

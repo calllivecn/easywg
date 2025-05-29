@@ -7,9 +7,7 @@ import atexit
 import ipaddress
 
 
-from funcs import (
-    start_thread,
-)
+import funcs
 import util
 from log import logger
 
@@ -63,7 +61,8 @@ def server(conf):
 
     checkalive = CheckAlive()
     checkalive.conf = conf
-    start_thread(target=checkalive.server, args=(self_ipv6, self_ipv4), name="CheckAlive.server()")
+    th_server = funcs.start_thread(target=checkalive.server, args=(self_ipv6, self_ipv4), name="CheckAlive.server()")
+    logger.debug(f"CheckAlive 线程已启动: {th_server.name}")
 
     for wg_conf in conf["peers"]:
 
@@ -105,4 +104,6 @@ def server(conf):
             checkalive.peers[cpeer] = peer_value
 
             logger.debug(f"为 {wg_check_ip}:{wg_check_port} 启动 checkalive")
-            start_thread(target=checkalive.ping, args=(checkalive.sock6, cpeer), name=f"check_alive-{wg_check_ip}")
+            funcs.start_thread(target=checkalive.ping, args=(checkalive.sock6, cpeer), name=f"check_alive-{wg_check_ip}")
+
+    th_server.join()

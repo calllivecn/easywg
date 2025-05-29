@@ -5,6 +5,11 @@ import threading
 from pathlib import Path
 
 
+CHECK_PORT = 19000
+CHECK_TIMEOUT = 5
+CHECK_FAILED_COUNT = 6
+
+
 # 加载配置文件
 def loadconf(conf: Path):
     with open(conf, "rb") as f:
@@ -23,6 +28,10 @@ class Argument(argparse.ArgumentParser):
 
 
 def start_thread(*args, **kwargs):
-    th = threading.Thread(args=args, kwargs=kwargs)
+    th = threading.Thread(*args, **kwargs)
     th.start()
     return th
+
+
+def get_event():
+    return threading.Event()
