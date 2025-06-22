@@ -82,6 +82,11 @@ def server(conf):
         logger.debug(f"配置peer: {peer}")
         with util.WireGuard() as wg:
             wg.set(wg_name, peer=peer)
+        
+
+        # 为allowed_ips 中其他网络添加路由信息
+        for cidr in peer.get("allowed_ips", []):
+            util.add_route_ifname(cidr, wg_name)
 
         
         # 为每个peer 启动 checkalive
@@ -105,4 +110,4 @@ def server(conf):
             logger.debug(f"为 {wg_check_ip}:{wg_check_port} 启动 checkalive")
             funcs.start_thread(target=checkalive.ping, args=(checkalive.sock6, cpeer), name=f"check_alive-{wg_check_ip}")
 
-    logger.debug(f"server 线程已结束")
+    logger.debug("server 线程已结束")

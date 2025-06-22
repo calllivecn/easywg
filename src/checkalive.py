@@ -45,7 +45,7 @@ class CheckAlive:
         # 有个时候，socket还没初始化完？使用event解决？
         self.event_server_ping = funcs.get_event()
 
-        self.peers: PeerRaddr = {}
+        self.peers: dict[tuple[PacketType, str, int], PeerRaddr] = {}
 
         self.serverhub = serverhub
 
@@ -184,7 +184,7 @@ class CheckAlive:
 
         while True:
             for key, event in self.se.select():
-                sock = key.fileobj
+                sock: socket.socket = key.fileobj
                 data, addr = sock.recvfrom(8192)
 
                 # 要是指定类型的数据

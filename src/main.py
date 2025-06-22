@@ -36,6 +36,9 @@ def main():
 
     parse.add_argument("--show", action="store_true", help="查看当前wg接口")
 
+    parse.add_argument("--vpn-up", action="store_true", help="在当前指定的wireguard是启用client VPN 网络模式。")
+    parse.add_argument("--vpn-down", action="store_true", help="关闭VPN模式。")
+
     parse.add_argument("--debug", action="store_true", help="debug 模式")
     parse.add_argument("--parse", action="store_true", help=argparse.SUPPRESS)
 
@@ -71,6 +74,29 @@ def main():
     elif args.show:
         import wgshow
         wgshow.main()
+    
+    elif args.vpn_up or args.vpn_down:
+        if args.conf is None:
+            print("请指定配置文件")
+            sys.exit(1)
+
+        try:
+            conf = loadconf(args.conf)
+        except Exception:
+            print("配置错误")
+            sys.exit(1)
+
+        ifname = conf["ifname"]["interface"]
+        fmark = conf["ifname"].get("fwmark", 0x8123)
+        table_id = conf["ifname"].get("table_id", fmark)
+        # table_id = 198
+    
+        if args.vpn_up:
+            util.set_global_route_wg_pyroute2(ifname, table_id, fmark)
+            logger.debug2(f"已启用 {ifname} 的 VPN 模式。")
+        elif args.vpn_down:
+            util.unset_global_route_wg_pyroute2(ifname, table_id, fmark)
+            logger.debug2(f"已关闭 {ifname} 的 VPN 模式。")
 
     else:
         try:
