@@ -87,15 +87,21 @@ def main():
             sys.exit(1)
 
         ifname = conf["ifname"]["interface"]
-        fmark = conf["ifname"].get("fwmark", 0x8123)
-        table_id = conf["ifname"].get("table_id", fmark)
+        fwmark = conf["ifname"].get("fwmark", 0x8123)
+        table_id = conf["ifname"].get("table_id", fwmark)
         # table_id = 198
-    
+
+        peer = conf["peers"][0]["peer"]
+        logger.debug(f"VPN peer: {peer}") 
+
         if args.vpn_up:
-            util.set_global_route_wg_pyroute2(ifname, table_id, fmark)
+            util.set_global_route_wg_pyroute2(ifname, table_id, fwmark)
+            util.wg_fwmark(ifname, fwmark)
+            util.allowed_ip_vpn_up(ifname, peer)
             logger.debug2(f"已启用 {ifname} 的 VPN 模式。")
         elif args.vpn_down:
-            util.unset_global_route_wg_pyroute2(ifname, table_id, fmark)
+            util.unset_global_route_wg_pyroute2(ifname, table_id, fwmark)
+            util.allowed_ip_vpn_down(ifname, peer)
             logger.debug2(f"已关闭 {ifname} 的 VPN 模式。")
 
     else:

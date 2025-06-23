@@ -4,6 +4,8 @@
 # update 2023-08-16 01:54:15
 # author calllivecn <calllivecn@outlook.com>
 
+
+import copy
 import socket
 import ipaddress
 
@@ -113,101 +115,6 @@ def unset_global_route_wg(ifname, table_id, fwmark):
     ip(f"ip rule del not fwmark {fwmark} table {table_id}")
     ip(f"ip rule del table main suppress_prefixlength 0")
 """
-
-
-############
-# ip route、　ip rule 、 pyroute2 版本
-###########
-
-def set_global_route_wg_pyroute2(ifname: str, table_id: int, fwmark: int):
-    """
-    使用 pyroute2 设置全局路由和策略路由。
-    对应命令行：
-    ip route add default dev <ifname> table <table_id>
-    ip rule add not fwmark <fwmark> table <table_id>
-    ip rule add table main suppress_prefixlength 0
-    """
-    with IPRoute() as ipr:
-        # 添加默认路由到指定的路由表
-        # 命令: ip route add default dev <ifname> table <table_id>
-        for family, default in [(socket.AF_INET, "0.0.0.0/0"), (socket.AF_INET6, "::/0")]:
-            ipr.route('add',
-                    dst=default,
-                    oif=ipr.link_lookup(ifname=ifname)[0],  # 获取接口索引
-                    table=table_id,
-                    family=family
-                    )
-            logger.debug2(f"Added default route via {ifname} to table {table_id}")
-
-            # 添加策略路由规则：非 fwmark 的流量使用指定的路由表
-            # 命令: ip rule add not fwmark <fwmark> table <table_id>
-            ipr.rule('add',
-                    priority=1000,  # 规则的优先级，确保它在其他规则之前生效
-                    # 这是一个 'not' 匹配，需要使用 'not_fwmark' 属性
-                    fwmark=fwmark,
-                    flags=2,  # 使用 'invert' 标志来表示 'not fwmark'
-                    table=table_id,
-                    family=family
-                    )
-            logger.debug2(f"Added rule: not fwmark {fwmark} -> table {table_id}")
-
-            # 添加策略路由规则：抑制 main 表的 prefixlength 0 (即默认路由)
-            # 这通常用于确保自定义路由表生效，而不会被 main 表的默认路由干扰
-            # 命令: ip rule add table main suppress_prefixlength 0
-            ipr.rule('add',
-                    priority=2000,  # 确保在自定义规则之后
-                    table=254,  # 使用 'main' 表
-                    suppress_prefixlen=0,
-                    family=family
-                    )
-            logger.debug2("Added rule: table main suppress_prefixlength 0")
-
-def unset_global_route_wg_pyroute2(ifname: str, table_id: int, fwmark: int):
-    """
-    使用 pyroute2 取消设置全局路由和策略路由。
-    对应命令行：
-    ip route del default dev <ifname> table <table_id>
-    ip rule del not fwmark <fwmark> table <table_id>
-    ip rule del table main suppress_prefixlength 0
-    """
-    with IPRoute() as ipr:
-        # 删除默认路由
-        # 命令: ip route del default dev <ifname> table <table_id>
-
-        try:
-
-            for family, default in [(socket.AF_INET, "0.0.0.0/0"), (socket.AF_INET6, "::/0")]:
-                ipr.route('del',
-                        dst=default,
-                        oif=ipr.link_lookup(ifname=ifname)[0],
-                        table=table_id,
-                        family=family
-                        )
-                logger.debug2(f"Deleted default route via {ifname} from table {table_id}")
-
-            # 删除策略路由规则：非 fwmark 的流量使用指定的路由表
-            # 命令: ip rule del not fwmark <fwmark> table <table_id>
-                ipr.rule('del',
-                        priority=1000, # 删除时也需要指定优先级，或者其他唯一标识
-                        fwmark=fwmark,
-                        invert=True,  # 使用 'invert' 来表示 'not fwmark'
-                        table=table_id,
-                        family=family
-                        )
-                logger.debug2(f"Deleted rule: not fwmark {fwmark} -> table {table_id}")
-
-            # 删除策略路由规则：抑制 main 表的 prefixlength 0
-            # 命令: ip rule del table main suppress_prefixlength 0
-                ipr.rule('del',
-                        priority=2000, # 删除时也需要指定优先级
-                        table=254,  # 使用 'main' 表
-                        suppress_prefixlength=0,
-                        family=family
-                        )
-                logger.debug2("Deleted rule: table main suppress_prefixlength 0")
-        except Exception as e:
-            logger.debug2(f"Error deleting route: {e}")
-
 
 
 ##################
@@ -378,9 +285,9 @@ def get_ip_by_addr(domainname):
 
 
 
-##################
-# route 操作
-##################
+############
+# ip route、　ip rule 、 pyroute2 版本
+###########
 
 # server端只需要添加 allowed_ips 的其他路由就行。
 # 添加一个路由
@@ -407,6 +314,113 @@ def del_route(nets):
     with NDB() as ndb:
         r = ndb.routes[nets]
         r.remove()
+
+
+def allowed_ip_vpn_up(ifname: str, peer: dict):
+    """
+    使用 pyroute2 设置 WireGuard 接口的 allowed_ips。
+    """
+    p = copy.deepcopy(peer) # 确保不修改原始数据
+    p["allowed_ips"] = ["0.0.0.0/0", "::/0"]
+
+    wg_peer(ifname, p)
+
+
+def allowed_ip_vpn_down(ifname: str, peer: dict):
+    p = copy.deepcopy(peer)
+    wg_peer(ifname, p)
+
+
+def set_global_route_wg_pyroute2(ifname: str, table_id: int, fwmark: int):
+    """
+    使用 pyroute2 设置全局路由和策略路由。
+    对应命令行：
+    ip route add default dev <ifname> table <table_id>
+    ip rule add not fwmark <fwmark> table <table_id>
+    ip rule add table main suppress_prefixlength 0
+    """
+    with IPRoute() as ipr:
+        # 添加默认路由到指定的路由表
+        # 命令: ip route add default dev <ifname> table <table_id>
+        for family, default in [(socket.AF_INET, "0.0.0.0/0"), (socket.AF_INET6, "::/0")]:
+            ipr.route('add',
+                    dst=default,
+                    oif=ipr.link_lookup(ifname=ifname)[0],  # 获取接口索引
+                    table=table_id,
+                    family=family
+                    )
+            logger.debug2(f"Added default route via {ifname} to table {table_id}")
+
+            # 添加策略路由规则：非 fwmark 的流量使用指定的路由表
+            # 命令: ip rule add not fwmark <fwmark> table <table_id>
+            ipr.rule('add',
+                    priority=1000,  # 规则的优先级，确保它在其他规则之前生效
+                    # 这是一个 'not' 匹配，需要使用 'not_fwmark' 属性
+                    fwmark=fwmark,
+                    flags=2,  # 使用 'invert' 标志来表示 'not fwmark'
+                    table=table_id,
+                    family=family
+                    )
+            logger.debug2(f"Added rule: not fwmark {fwmark} -> table {table_id}")
+
+            # 添加策略路由规则：抑制 main 表的 prefixlength 0 (即默认路由)
+            # 这通常用于确保自定义路由表生效，而不会被 main 表的默认路由干扰
+            # 命令: ip rule add table main suppress_prefixlength 0
+            ipr.rule('add',
+                    priority=2000,  # 确保在自定义规则之后
+                    table=254,  # 使用 'main' 表
+                    suppress_prefixlen=0,
+                    family=family
+                    )
+            logger.debug2("Added rule: table main suppress_prefixlength 0")
+
+def unset_global_route_wg_pyroute2(ifname: str, table_id: int, fwmark: int):
+    """
+    使用 pyroute2 取消设置全局路由和策略路由。
+    对应命令行：
+    ip route del default dev <ifname> table <table_id>
+    ip rule del not fwmark <fwmark> table <table_id>
+    ip rule del table main suppress_prefixlength 0
+    """
+    with IPRoute() as ipr:
+        # 删除默认路由
+        # 命令: ip route del default dev <ifname> table <table_id>
+
+        try:
+
+            for family, default in [(socket.AF_INET, "0.0.0.0/0"), (socket.AF_INET6, "::/0")]:
+                ipr.route('del',
+                        dst=default,
+                        oif=ipr.link_lookup(ifname=ifname)[0],
+                        table=table_id,
+                        family=family
+                        )
+                logger.debug2(f"Deleted default route via {ifname} from table {table_id}")
+
+            # 删除策略路由规则：非 fwmark 的流量使用指定的路由表
+            # 命令: ip rule del not fwmark <fwmark> table <table_id>
+                ipr.rule('del',
+                        priority=1000, # 删除时也需要指定优先级，或者其他唯一标识
+                        fwmark=fwmark,
+                        invert=True,  # 使用 'invert' 来表示 'not fwmark'
+                        table=table_id,
+                        family=family
+                        )
+                logger.debug2(f"Deleted rule: not fwmark {fwmark} -> table {table_id}")
+
+            # 删除策略路由规则：抑制 main 表的 prefixlength 0
+            # 命令: ip rule del table main suppress_prefixlength 0
+                ipr.rule('del',
+                        priority=2000, # 删除时也需要指定优先级
+                        table=254,  # 使用 'main' 表
+                        suppress_prefixlength=0,
+                        family=family
+                        )
+                logger.debug2("Deleted rule: table main suppress_prefixlength 0")
+        except Exception as e:
+            logger.debug2(f"Error deleting route: {e}")
+
+
 
 
 
@@ -494,16 +508,16 @@ def wg_peer(ifname, peer):
     if allowed_ips is not None:
         for network in allowed_ips:
 
-           try:
-               net = ipaddress.ip_network(network)
-           except ValueError:
-               raise ValueError(f"allowed-ips: {network} 不是网络地址， 或网络地址不正确。")
+            try:
+                net = ipaddress.ip_network(network)
+            except ValueError:
+                raise ValueError(f"allowed-ips: {network} 不是网络地址， 或网络地址不正确。")
         
             # 这个接口上的，添加其他网络
-           with NDB() as ndb:
-               cidr = ndb.routes.get(network)
-               if cidr is None:
-                   add_route_ifname(net.compressed, ifname)
+            with NDB() as ndb:
+                cidr = ndb.routes.get(network)
+                if cidr is None:
+                    add_route_ifname(net.compressed, ifname)
 
         
     with WireGuard() as wg:
