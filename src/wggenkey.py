@@ -26,7 +26,9 @@ class WireGuardKeyGenerator:
 
         return base64.b64encode(self._private_key_raw).decode('utf-8')
 
-    def pubkey(self, private_key: str=None) -> str:
+    from typing import Optional
+
+    def pubkey(self, private_key: Optional[str]=None) -> str:
         """
         返回与内部存储私钥对应的 Base64 编码公钥。
         调用此方法前必须先调用 `genkey()`。
