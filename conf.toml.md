@@ -25,7 +25,7 @@ address = ["10.1.1.1/24", "fc01::1/64"]
 # 可选， 一般不配置, 值 0~2^31-1。
 # fwmark = 
 
-#先在代码里写死table_id=198 的值吧。 由于pyroute2 当前只支持了table_id: 0~252。实际新版linux 已经是 0~2^31-1的范围了。
+#先在代码里写死table_id=fwmark的值吧。新版linux也已经是 0~2^31-1的范围了。
 
 
 # wireguard 的 peers 配置
