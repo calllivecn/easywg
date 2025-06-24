@@ -167,10 +167,9 @@ def ip_link_mtu(ifname: str, mtu: int):
 
 def ip_link_add_wg(ifname):
     with IPRoute() as ipr:
-        ipr.link('add',
-                 index=getifname_index(ifname),
-                 kind='wireguard',
-                )
+        ipr.link('add', ifname=ifname, kind='wireguard')
+        # ipr.poll(ipr.link, 'dump', timeout=5, ifname=ifname)
+        ipr.link('set', ifname=ifname, state='up')
 
 
 def ip_link_del_wg(ifname):
@@ -220,11 +219,13 @@ def get_ip_by_addr(domainname):
 # 添加一个路由
 def add_route_ifname(net, ifname):
     with IPRoute() as ipr:
-        try:
-            ipr.route('add', dst=net, oif=ipr.link_lookup(ifname=ifname)[0])
-        except KeyError:
+        if len(ipr.route("dump", dst=net)) > 0:
             # 如果路由已经存在，可能是因为之前添加过了。
             logger.debug(f"路由 {net} 已经存在，跳过添加。")
+            return
+
+        try:
+            ipr.route('add', dst=net, oif=ipr.link_lookup(ifname=ifname)[0])
         except Exception as e:
             logger.error(f"添加路由失败: {net} {ifname} Except: {e}")
             raise
