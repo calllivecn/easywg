@@ -12,7 +12,6 @@ import ipaddress
 # from nftables import Nftables
 
 from pyroute2 import (
-    NDB,
     IPRoute,
     WireGuard,
 )
@@ -149,11 +148,13 @@ def ip_addr_ifname(ifname: str) -> list[tuple[str, int]]:
 
 
 def ip_addr_add(ifname: str, cidr: str):
+    ip_if = ipaddress.ip_interface(cidr)
+
     with IPRoute() as ipr:
         ipr.addr('add',
                  index=getifname_index(ifname),
-                 address=cidr.split("/")[0],
-                 prefixlen=int(cidr.split("/")[1]),
+                 address=str(ip_if.ip),
+                 prefixlen=ip_if.network.prefixlen
                 )
 
 
@@ -403,7 +404,7 @@ def wg_peer(ifname, peer):
     if addr is not None:
         try:
             ip = ipaddress.ip_address(addr)
-        except ValueError:
+        except ipaddress.AddressValueError:
             # 说明是域名, 需要解析成IP才能给WG使用
             ipv4s, ipv6s = get_ip_by_addr(addr)
 
@@ -420,18 +421,17 @@ def wg_peer(ifname, peer):
         peer["endpoint_addr"] = ip
 
     # check allowed-ips 都是网络地址
-    allowed_ips = peer.get("allowed_ips")
-    peer["allowed_ips"] = allowed_ips
-    if allowed_ips is not None:
-        for network in allowed_ips:
+    peer["allowed_ips"] = peer.get("allowed_ips")
 
-            try:
-                net = ipaddress.ip_network(network)
-            except ValueError:
-                raise ValueError(f"allowed-ips: {network} 不是网络地址， 或网络地址不正确。")
-        
-            # 这个接口上的，添加其他网络
-            add_route_ifname(net.compressed, ifname)
+    for network in peer["allowed_ips"]:
+
+        try:
+            ip_if = ipaddress.ip_interface(network)
+        except ValueError:
+            raise ValueError(f"allowed-ips: {network} 不是网络地址，或网络地址不正确。")
+
+        # 这个接口上的，添加其他网络
+        add_route_ifname(ip_if.network, ifname)
 
         
     with WireGuard() as wg:

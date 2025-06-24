@@ -45,10 +45,10 @@ def server(conf):
     self_ipv4 = None
     self_ipv6 = None
     # 配置 wg 接口ip地址
-    for CIDR in ifname["address"]:
-        util.ip_addr_add(wg_name, CIDR)
+    for cidr in ifname["address"]:
+        util.ip_addr_add(wg_name, cidr)
 
-        ip = ipaddress.ip_address(CIDR.split("/")[0])
+        ip = ipaddress.ip_address(cidr.split("/")[0])
         if ip.version == 4:
             if self_ipv4 is None:
                 self_ipv4 = ip.exploded
@@ -86,7 +86,20 @@ def server(conf):
 
         # 为allowed_ips 中其他网络添加路由信息
         for cidr in peer.get("allowed_ips", []):
-            util.add_route_ifname(cidr, wg_name)
+            net = ipaddress.ip_network(cidr)
+
+            add_route_flag = True
+            # 排除ifname地址自动添加的路由。
+            for ifaddr in ifname["address"]:
+                ifaddr = ipaddress.ip_interface(ifaddr)
+                if ifaddr.network.overlaps(net):
+                    logger.debug(f"跳过 {cidr}，因为与接口地址 {ifaddr.network} 重叠")
+                    add_route_flag = False
+
+
+            if add_route_flag:
+                util.add_route_ifname(cidr, wg_name)
+                logger.debug(f"添加 {cidr}")
 
         
         # 为每个peer 启动 checkalive

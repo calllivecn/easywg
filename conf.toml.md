@@ -15,6 +15,7 @@ interface = "wg-pyz"
 private_key = "private key"
 
 # 可选，在有防火墙的情况下，还是指定下端口，并在防火墙上开放对应的UDP端口
+# 如果不做被连接端，最好不填让系统自动分配。
 # listen_port = 18000
 
 address = ["10.1.1.1/24", "fc01::1/64"]
