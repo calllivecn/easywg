@@ -127,9 +127,12 @@ class WgShow:
             
             # 其他信息
             tv_sec = peer.get_attr('WGPEER_A_LAST_HANDSHAKE_TIME')["tv_sec"]
-            now = datetime.now().timestamp()
-            latest = timedelta(seconds=round(now - tv_sec))
-            peer_conf["latest_handshake"] = f"{latest} 之前"
+            if tv_sec == 0:
+                peer_conf["latest_handshake"] = "从未握手"
+            else:
+                now = datetime.now().timestamp()
+                latest = timedelta(seconds=round(now - tv_sec))
+                peer_conf["latest_handshake"] = f"{latest} 之前"
 
             peers_conf.append(peer_conf)
 
