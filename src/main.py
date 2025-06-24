@@ -35,6 +35,7 @@ def main():
     parse.add_argument("--genpsk", action="store_true", help="生成预共享密钥")
 
     parse.add_argument("--show", action="store_true", help="查看当前wg接口")
+    parse.add_argument("--show-private", action="store_true", help="查看当前wg接口")
 
     parse.add_argument("--vpn-up", action="store_true", help="在当前指定的wireguard是启用client VPN 网络模式。")
     parse.add_argument("--vpn-down", action="store_true", help="关闭VPN模式。")
@@ -74,6 +75,10 @@ def main():
     elif args.show:
         import wgshow
         wgshow.main()
+
+    elif args.show_private:
+        import wgshow
+        wgshow.main(True)
     
     elif args.vpn_up or args.vpn_down:
         if args.conf is None:

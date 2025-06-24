@@ -122,135 +122,62 @@ def unset_global_route_wg(ifname, table_id, fwmark):
 ##################
 
 def getifname_index(ifname):
-    with NDB() as ndb:
-        return ndb.interfaces[ifname]["index"]
-
-def ip_list_all(ndb):
-    """
-    这里的address 是MAC 地址
-    return:
-    [
-        {
-            "address": "00:00:00:00:00:00",
-            "ifname": "lo",
-            "index": 1,
-            "kind": null
-        },
-        {
-            "address": "7c:10:c9:1e:9e:de",
-            "ifname": "enp6s0",
-            "index": 2,
-            "kind": null
-        },
-        {
-            "address": "8c:c6:81:15:83:b7",
-            "ifname": "wlp5s0",
-            "index": 3,
-            "kind": null
-        }
-    ]
-    """
-    # with NDB() as ndb:
-    r = (
-        ndb.interfaces.summary()
-        .select("index", "ifname", "address", "kind")
-        .format("json")
-    )
-    return r
-
-def ip_addr_list():
     with IPRoute() as ipr:
-        # ipr.get_addr(label="eth0")
-        r = ipr.get_addr()
-    return r
+        return ipr.link_lookup(ifname=ifname)[0]
 
 
-def ip_addr_ifname(ndb, ifname):
+def ip_addr_ifname(ifname: str) -> list[tuple[str, int]]:
     """
-    # 这种 .format("josn" or "csv") 返回的是文本。
-    # 可以直接使用 *.address的方式获取属性
-    return:
-    [
-        {
-            "address": "10.1.3.200",
-            "ifname": "wg-pyz",
-            "prefixlen": 24,
-            "target": "localhost",
-            "tflags": 0
-        },
-        {
-            "address": "fc03::200",
-            "ifname": "wg-pyz",
-            "prefixlen": 64,
-            "target": "localhost",
-            "tflags": 0
-        }
-    ]
-
+    return: str, 返回接口的IPv4 IPv6地址
     """
-    r = (
-        ndb.interfaces[ifname]
-        .ipaddr
-        .summary()
-        # .select("address", "prefixlen")
-        # .format("json")
-    ) 
-    return r
+    ips = []
+    with IPRoute() as ipr:
 
-def ip_addr_add(ifname, CIDR):
-    with NDB() as ndb:
-        dev = ndb.interfaces[ifname]
-        dev.add_ip(CIDR)
-        dev.commit()
+        index = ipr.link_lookup(ifname=ifname)[0]     
+
+        # 拿ipv4 时不能使用 fmaily 参数？不然拿到是空[]
+        # for r in ipr.get_addr(label=ifname, fmaily=socket.AF_INET):
+        # 如果使用index参数就能直接拿到ipv4 ipv6...
+        for r in ipr.get_addr(index=index):
+            ips.append((r.get_attr("IFA_ADDRESS"), r["prefixlen"]))
+
+    if len(ips) == 0:
+        logger.warning(f"接口 {ifname} 没有配置IP地址")
+        return []
+
+    return ips
+
+
+def ip_addr_add(ifname: str, cidr: str):
+    with IPRoute() as ipr:
+        ipr.addr('add',
+                 index=getifname_index(ifname),
+                 address=cidr.split("/")[0],
+                 prefixlen=int(cidr.split("/")[1]),
+                )
+
 
 def ip_link_mtu(ifname: str, mtu: int):
-    with NDB() as ndb:
-        dev = ndb.interfaces[ifname]
-        dev.set(mtu=mtu)
-        dev.commit()
+    with IPRoute() as ipr:
+        ipr.link('set',
+                 index=getifname_index(ifname),
+                 mtu=mtu,
+                )
 
 
 def ip_link_add_wg(ifname):
-    with NDB() as ndb:
-        dev = ndb.interfaces.create(ifname=ifname, kind="wireguard")
-        dev.set(state="up")
-        dev.commit()
+    with IPRoute() as ipr:
+        ipr.link('add',
+                 index=getifname_index(ifname),
+                 kind='wireguard',
+                )
 
 
 def ip_link_del_wg(ifname):
-    with NDB() as ndb:
-        dev = ndb.interfaces[ifname]
-        dev.set(state="down")
-        dev.remove()
-        dev.commit()
-
-
-def getifname_ip(ndb, ifname):
-    """
-    查询ipv4 + ipv6
-    如果给定接口名不存在，返回空list: []
-    return:
-    [
-        {
-            "address": "192.168.8.7",
-            "ifname": "wlp5s0",
-            "prefixlen": 24
-        },
-        {
-            "address": "fe80::ae76:253a:4c11:7772",
-            "ifname": "wlp5s0",
-            "prefixlen": 64
-        }
-    ]
-    """
-    # with NDB() as ndb:
-    r = (
-        ndb.addresses.summary()
-        .filter(ifname=ifname)
-        .select("ifname", "address", "prefixlen")
-        # .format("json")
-    )
-    return r
+    with IPRoute() as ipr:
+        ipr.link('del',
+                 index=getifname_index(ifname),
+                )
 
 
 # 测试当前网络环境能使用ipv6不
@@ -292,9 +219,9 @@ def get_ip_by_addr(domainname):
 # server端只需要添加 allowed_ips 的其他路由就行。
 # 添加一个路由
 def add_route_ifname(net, ifname):
-    with NDB() as ndb:
+    with IPRoute() as ipr:
         try:
-            ndb.routes.create(dst=net, oif=getifname_index(ifname)).commit()
+            ipr.route('add', dst=net, oif=ipr.link_lookup(ifname=ifname)[0])
         except KeyError:
             # 如果路由已经存在，可能是因为之前添加过了。
             logger.debug(f"路由 {net} 已经存在，跳过添加。")
@@ -302,18 +229,22 @@ def add_route_ifname(net, ifname):
             logger.error(f"添加路由失败: {net} {ifname} Except: {e}")
             raise
 
-def add_route_via(nets, via):
-    with NDB() as ndb:
-        #r = ndb.routes.create(dst=nets, via=via).commit()
-        r = ndb.routes.create(dst=nets)
-        r.set(gateway=via)
-        #r.set(proto=2) # proto字段的定义在内核中并没有实质的意义，只是一个显示字段。RTPROT_UNSPEC表示未指定； 其他值可以查看 vim /etc/iproute2/rt_protos
-        r.commit()
 
-def del_route(nets):
-    with NDB() as ndb:
-        r = ndb.routes[nets]
-        r.remove()
+def add_route_via(net, via):
+    with IPRoute() as ipr:
+        try:
+            ipr.route('add', dst=net, via=via)
+        except KeyError:
+            # 如果路由已经存在，可能是因为之前添加过了。
+            logger.debug(f"路由 {net} 已经存在，跳过添加。")
+        except Exception as e:
+            logger.error(f"添加路由失败: {net} {via} Except: {e}")
+            raise
+
+
+def del_route(net):
+    with IPRoute() as ipr:
+        ipr.route('del', dst=net)
 
 
 def allowed_ip_vpn_up(ifname: str, peer: dict):
@@ -417,6 +348,7 @@ def unset_global_route_wg_pyroute2(ifname: str, table_id: int, fwmark: int):
                         family=family
                         )
                 logger.debug2("Deleted rule: table main suppress_prefixlength 0")
+
         except Exception as e:
             logger.debug2(f"Error deleting route: {e}")
 
@@ -428,29 +360,13 @@ def unset_global_route_wg_pyroute2(ifname: str, table_id: int, fwmark: int):
 # Wireguard 操作
 ##################
 
-def list_wg_all(ndb):
-    """
-    这里的address 是MAC 地址
-    """
-    # with NDB() as ndb:
-    r = (
-        ndb.interfaces.summary()
-        .filter(kind="wireguard")
-        .select("index", "ifname", "kind")
-        # .format("json")
-    )
-    return r
-
-
-def show_wg(ndb, ifname):
-
-    r = (
-        ndb.interfaces[ifname]
-        .select("index", "ifname", "kind")
-        # .format("json")
-    )
-
-    return r
+def list_wg_all() -> list[str]:
+    wg_list = []
+    with IPRoute() as ipr:
+        for wg in ipr.link("dump", kind="wireguard"):
+            wg_list.append(wg.get_attr("IFLA_IFNAME"))
+    
+    return wg_list
 
 
 def wg_fwmark(ifname, fwmark):
@@ -514,10 +430,7 @@ def wg_peer(ifname, peer):
                 raise ValueError(f"allowed-ips: {network} 不是网络地址， 或网络地址不正确。")
         
             # 这个接口上的，添加其他网络
-            with NDB() as ndb:
-                cidr = ndb.routes.get(network)
-                if cidr is None:
-                    add_route_ifname(net.compressed, ifname)
+            add_route_ifname(net.compressed, ifname)
 
         
     with WireGuard() as wg:
@@ -575,13 +488,15 @@ def add_forwarding(ifname, network):
         raise NftablesError(f"网络地址不正确：{network}")
 
     # nftable v0.9.3 (ubuntu 20.04) 可以不用分ip ip6。inet 是可以直接用于 nat 
-    output = nft(f"add table inet easywg")
-    output = nft(f"add chain inet easywg postrouting {{ type nat hook postrouting priority 10; policy accept; }}")
+    output = nft("add table inet easywg")
+    output = nft("add chain inet easywg postrouting { type nat hook postrouting priority 10; policy accept; }}")
 
     if net.version == 4:
         ip_version = "ip"
     elif net.version == 6:
         ip_version = "ip6"
+    else:
+        raise NftablesError(f"不支持的网络协议版本：{network}")
 
     output = nft(f"add rule inet easywg postrouting oif {ifname} {ip_version} saddr {network} counter masquerade")
 
@@ -618,11 +533,6 @@ def remove_forwarding(table_name="easywg"):
 
 
 def test():
-    import pprint
-    
-    # 目前观察结论：好像使用*.summary()的就不能提前关闭ndb
-    ndb = NDB()
-
     print("="*10, "ifname index:", "="*10)
     # print(f"""{getifname_index("wg-pyz")=}""")
 
@@ -630,7 +540,7 @@ def test():
     # print(ip_list_all(ndb))
 
     print("="*10, "ip addr ifname:", "="*10)
-    print(ip_addr_ifname(ndb, "wgpy"))
+    print(ip_addr_ifname("wgpy"))
 
     # for ip_addrs in ip_addr_list():
     #     msg = pprint.pformat(ip_addrs)
@@ -649,7 +559,6 @@ def test():
     # input("按回车继续。。。")
     # ip_link_down_wg("wg-test0")
 
-    ndb.close()
 
 if __name__ == "__main__":
     # test()

@@ -4,12 +4,14 @@
 # author calllivecn <calllivecn@outlook.com>
 
 
-import json
 import copy
 
+from datetime import (
+    datetime,
+    timedelta,
+)
 
 from pyroute2 import (
-    NDB,
     WireGuard,
 )
 
@@ -18,40 +20,29 @@ from log import logger
 
 
 __all__ = (
-    "WgShow"
-)
+    "WgShow",
+    )
+
+
+def human_byte_size(size: int|float) -> str:
+    """
+    将字节数转换为人类可读的格式
+    """
+    for unit in ['B', 'KB', 'MB', 'GB', 'TB']:
+
+        if size < 1024:
+            return f"{size:.2f} {unit}"
+
+        size /= 1024
+
+    return f"{size:.2f}"
+
 
 class WgShow:
 
-    def __init__(self):
+    def show_wg(self, ifname, private=False) -> dict:
+        self._private = private
 
-        self.ndb = NDB()
-    
-
-    def close(self):
-        self.ndb.close()
-    
-    def __enter__(self):
-        return self
-    
-    def __exit__(self, exc_type, exc_value, traceback):
-        # logger.debug(f"执行退出清理：{exc_type=} {exc_value=} {traceback=}")
-        self.close()
-
-
-    def list_wg(self):
-        r = (
-            self.ndb.interfaces.summary()
-            # ndb.interfaces.dump()
-            .filter(kind="wireguard")
-            .select("index", "ifname", "kind")
-            .format("json")
-        )
-        return json.loads(str(r))
-
-
-
-    def show_wg(self, ifname):
         """
         wg show:
         {'attrs': [('WGDEVICE_A_LISTEN_PORT', 18000),
@@ -94,96 +85,65 @@ class WgShow:
         with WireGuard() as wg:
             wg = wg.info(ifname)[0]
 
-        # return wg
-
-        # wg 从pyroute2 里 解析 出来 dict 的 信息格式
-        # 之后还需要添加，address, 
         wg_conf = {}
-        for k, v in wg["attrs"]:
-            if "IFNAME" in k:
-                wg_conf["interface"] = v
-
-            elif "PRIVATE_KEY" in k:
-                wg_conf["private_key"] = v
-
-            elif "PUBLIC_KEY" in k:
-                wg_conf["public_key"] = v
-
-            elif "LISTEN_PORT" in k:
-                wg_conf["listen_port"] = v
-
-            elif "WGDEVICE_A_FWMARK" in k:
-                wg_conf["fwmark"] = v
-
-            elif "WGDEVICE_A_PEERS" in k:
-                peers = v
-            
-            elif "PRESHARED_KEY" in k:
-                peers["preshared_key"] = v
-
-            else:
-                logger.debug(f"跳过: {k=} {v=}")
-
+        wg_conf["interface"] = wg.get_attr('WGDEVICE_A_IFNAME')
+        wg_conf["fwmark"] = wg.get_attr('WGDEVICE_A_FWMARK')
+        wg_conf["if_index"] = wg.get_attr('WGDEVICE_A_IFINDEX')
+        wg_conf["listen_port"] = wg.get_attr('WGDEVICE_A_LISTEN_PORT')
+        wg_conf["private_key"] = wg.get_attr('WGDEVICE_A_PRIVATE_KEY') if self._private else "**********"
+        wg_conf["public_key"] = wg.get_attr('WGDEVICE_A_PUBLIC_KEY')
 
         addrs = []
-        with NDB() as ndb:
-            for addr in util.ip_addr_ifname(ndb, ifname):
-                # logger.debug(f"{addr=} {addr.address=}, {addr.prefixlen=}")
-                addrs.append("/".join([addr.address, str(addr.prefixlen)]))
+        for addr, prefixlen in util.ip_addr_ifname(ifname):
+            addrs.append("/".join([addr, str(prefixlen)]))
 
-        wg_conf["address"] = addrs
+        wg_conf["ip_address"] = addrs
 
+
+        peers = wg.get_attr("WGDEVICE_A_PEERS")
         peers_conf = []
-        wg_conf["peers"] = peers_conf
         for peer in peers:
             peer_conf = {}
-            for k, v in peer["attrs"]:
-                if "PUBLIC_KEY" in k:
-                    peer_conf["public_key"] = v
+            peer_conf["wg_protocol_version"] = peer.get_attr('WGPEER_A_PROTOCOL_VERSION')
+            peer_conf["public_key"] = peer.get_attr('WGPEER_A_PUBLIC_KEY')
+            peer_conf["preshared_key"] = peer.get_attr('WGPEER_A_PRESHARED_KEY') if self._private else "**********"
+            peer_conf["persistent_keepalive"] = peer.get_attr('WGPEER_A_PERSISTENT_KEEPALIVE_INTERVAL')
 
-                elif "PRESHARED_KEY" in k:
-                    if v != b"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=":
-                        peer_conf["preshared_key"] = v
+            endpoint = peer.get_attr('WGPEER_A_ENDPOINT')
+            if endpoint:
+                peer_conf["endpoint_addr"] = endpoint.get("addr")
+                peer_conf["endpoint_port"] = endpoint.get("port")
 
-                elif "PROTOCOL_VERSION" in k:
-                    peer_conf["wg_protocol_version"] = v
+            allowed_ips = peer.get_attr('WGPEER_A_ALLOWEDIPS')
+            allowed_ips_list = []
+            for allowed_ip in allowed_ips:
+                allowed_ips_list.append(allowed_ip.get('addr'))
+            
+            peer_conf["allowed_ips"] = allowed_ips_list
 
-                elif "ENDPOINT" in k:
-                    peer_conf["endpoint_addr"] = v["addr"]
-                    peer_conf["endpoint_port"] = v["port"]
-
-                elif "ALLOWEDIPS" in k:
-                    ips = []
-                    for nets in v:
-                        ips.append(nets["addr"])
-
-                    peer_conf["allowed_ips"] = ips 
-
-                # elif "HANDSHAKE_TIME" in k:
-                    # peer_conf["handshake_time"]
-
-                # elif "PERSISTENT_KEEPALIVE_INTERVAL" in k:
-
-                elif "WGPEER_A_TX_BYTES" == k:
-                    peer_conf["tx_bytes"] = v
-
-                elif "WGPEER_A_RX_BYTES" == k:
-                    peer_conf["rx_bytes"] = v
-
+            # 统计信息
+            peer_conf["tx_bytes"] = human_byte_size(peer.get_attr('WGPEER_A_TX_BYTES'))
+            peer_conf["rx_bytes"] = human_byte_size(peer.get_attr('WGPEER_A_RX_BYTES'))
+            
+            # 其他信息
+            tv_sec = peer.get_attr('WGPEER_A_LAST_HANDSHAKE_TIME')["tv_sec"]
+            now = datetime.now().timestamp()
+            latest = timedelta(seconds=round(now - tv_sec))
+            peer_conf["latest_handshake"] = f"{latest} 之前"
 
             peers_conf.append(peer_conf)
 
         wg_conf["peers"] = peers_conf
 
-        self.peers_conf = peer_conf
-        return wg_conf
+        self.wg_conf = wg_conf
+        return self.wg_conf
 
 
     def get_wg_conf(self):
         """
         返回可转发的配置信息
         """
-        confs = copy.deepcopy(self.peers_conf)
+        confs = copy.deepcopy(self.wg_conf)
 
         data = []
         for conf in confs:
@@ -194,22 +154,22 @@ class WgShow:
     def wg_conf_transport(self):
 
         self.get_wg_conf
-        
 
 
-def main():
+
+def main(bool_=False):
     import pprint
-    with WgShow() as ws:
 
-        list_wg_list = ws.list_wg()
-        logger.debug(f"""{"="*20}""")
-        logger.debug(f"{type(list_wg_list)=} {list_wg_list=}")
+    list_wg_list = util.list_wg_all()
+    logger.debug(f"""{"="*20}""")
+    logger.debug(f"{type(list_wg_list)=} {list_wg_list=}")
 
 
-        for wg_kind in list_wg_list:
-            wg_conf = ws.show_wg(wg_kind["ifname"])
-            print(f"""{"="*10} {wg_kind["ifname"]} {"="*10}""")
-            print("\n" + pprint.pformat(wg_conf))
+    ws = WgShow()
+    for wg in list_wg_list:
+        wg_conf = ws.show_wg(wg, bool_)
+        print(f"""{"="*10} {wg} {"="*10}""")
+        print(pprint.pformat(wg_conf))
     
 
 if __name__ == "__main__":
