@@ -209,7 +209,7 @@ class CheckAlive:
                     peer = self.peers.get(ping_peeraddr)
                     if peer is None:
                         self.peers[ping_peeraddr] = CPeer(queue.Queue(128))
-                        funcs.start_thread(target=self.server_ping, args=(sock, ping_peeraddr), name="server_ping check()")
+                        funcs.start_thread(target=self.server_ping, args=(sock, ping_peeraddr), name="server_ping check()", daemon=True)
 
                 elif typ == PacketType.PING_REPLY:
                     cpeer = self.peers.get(peeraddr)

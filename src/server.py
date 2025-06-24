@@ -1,9 +1,7 @@
 
-import sys
 import copy
 import queue
 import signal
-import atexit
 import ipaddress
 
 
@@ -38,8 +36,10 @@ def server(conf):
         util.ip_link_mtu(wg_name, wg_mtu)
 
 
-    atexit.register(lambda :util.ip_link_del_wg(wg_name))
-    signal.signal(signal.SIGTERM, lambda sig, frame: sys.exit(0))
+    exit_event = funcs.get_event()
+
+    # atexit.register(lambda :util.ip_link_del_wg(wg_name))
+    signal.signal(signal.SIGTERM, lambda sig, frame: exit_event.set())
 
     
     self_ipv4 = None
@@ -61,7 +61,7 @@ def server(conf):
 
     checkalive = CheckAlive()
     checkalive.conf = conf
-    funcs.start_thread(target=checkalive.server, args=(self_ipv6, self_ipv4), name="CheckAlive.server()")
+    funcs.start_thread(target=checkalive.server, args=(self_ipv6, self_ipv4), name="CheckAlive.server()", daemon=True)
 
     for wg_conf in conf["peers"]:
 
@@ -121,6 +121,13 @@ def server(conf):
             checkalive.peers[cpeer] = peer_value
 
             logger.debug(f"为 {wg_check_ip}:{wg_check_port} 启动 checkalive")
-            funcs.start_thread(target=checkalive.ping, args=(checkalive.sock6, cpeer), name=f"check_alive-{wg_check_ip}")
+            funcs.start_thread(target=checkalive.ping, args=(checkalive.sock6, cpeer), name=f"check_alive-{wg_check_ip}", daemon=True)
+
+
+    try:
+        exit_event.wait()
+    finally:
+        util.ip_link_del_wg(wg_name)
+        logger.debug(f"已删除接口：{wg_name}")
 
     logger.debug("server 线程已结束")
