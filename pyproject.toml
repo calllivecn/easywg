@@ -1,6 +1,6 @@
 [project]
 name = "wgpy"
-version = "0.1.0"
+version = "0.9.4"
 description = "简单使用Wireguard"
 readme = "README.md"
 requires-python = ">=3.12"
