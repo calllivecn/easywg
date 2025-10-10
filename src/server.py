@@ -73,8 +73,7 @@ def server(conf):
 
             if len(addr) == 0:
                 logger.warning(f"没有查询到 {endpoint_addr} IP, 可能出错了。请检查")
-            else:
-                # fix 如果启动的时候没有解析到域名会不添加peer，就用本地地址。
+                # fix 启动的时候没有解析到域名，先用本地地址占位，之后的检测线程会更新。
                 addr = "127.0.0.1"
 
             peer["endpoint_addr"] = addr
@@ -102,18 +101,14 @@ def server(conf):
                 logger.debug(f"添加 {cidr}")
 
         
-        # 为每个peer 启动 checkalive
+        # 为每个peer启动 checkalive
         wg_check_ip = info.get("wg_check_ip")
         if wg_check_ip:
             wg_check_port = info.get("wg_check_port", 19000)
 
-            packetpeer = PacketPeer(PacketType.PING_REPLY, (wg_check_ip, wg_check_port))
-
-            peer_value = QueuePeer(
-                queue.Queue(128),
-                wg_conf["peer"],
-            )
-
+            packetpeer = PacketPeer(PacketType.PING, (wg_check_ip, wg_check_port))
+            peer_value = QueuePeer(queue.Queue(128), wg_conf["peer"])
+            logger.debug(f"添加 checkalive.peers: {packetpeer}, {peer_value}")
             checkalive.peers[packetpeer] = peer_value
 
             logger.debug(f"为 {wg_check_ip}:{wg_check_port} 启动 checkalive")

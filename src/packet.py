@@ -16,7 +16,6 @@ from typing import (
     Self,
 )
 
-
 class PacketType(enum.IntEnum):
 
     PING = 0x01
@@ -45,10 +44,11 @@ class Ping(struct.Struct):
         self.pack_into(self.buf, 0, self.typ, self.seq)
     
 
-    @classmethod
-    def reply(cls, packet: bytes) -> Self:
+    @staticmethod
+    # def reply(packet: bytes) -> Self: # type: ignore
+    def reply(packet: bytes) -> "Ping": # type: ignore
 
-        p = cls()
+        p = Ping()
 
         if packet[0] == PacketType.PING:
             p.typ = PacketType.PING_REPLY
@@ -61,17 +61,9 @@ class Ping(struct.Struct):
         return p
 
     
-    # @staticmethod
-    @classmethod
-    def server_reply(cls, packet: bytes) -> Self:
-        p = cls(PacketType.SERVER_PING_REPLY)
-        typ, p.seq = p.unpack(packet[:p.size])
-        return p
-
-    
     def next(self):
         self.seq += 1
-        if self.seq >= sys.maxsize:
+        if self.seq > sys.maxsize:
             self.seq = 0
 
         self.pack_into(self.buf, 0, self.typ, self.seq)
