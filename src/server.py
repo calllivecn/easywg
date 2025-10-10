@@ -75,7 +75,9 @@ def server(conf):
 
             if len(addr) == 0:
                 logger.warning(f"没有查询到 {endpoint_addr} IP, 可能出错了。请检查")
-                continue
+            else:
+                # fix 如果启动的时候没有解析到域名会不添加peer，就用本地地址。
+                addr = "127.0.0.1"
 
             peer["endpoint_addr"] = addr
         
