@@ -17,26 +17,33 @@ import funcs
 
 __all__ = [
     "CheckAlive",
-    "PeerRaddr",
-    "CPeer",
+    "QueuePeer",
+    "PacketPeer",
 ]
 
+@dataclass
+class QueuePeer:
+    q: queue.Queue
+    peer_conf: dict
 
 @dataclass
-class CPeer:
-    q: queue.Queue
-    conf: dict | None = None
+class PacketPeer:
+    packettype: PacketType
+    # wg_check_ip_port: tuple[str, int]
+    wg_check_ip_port: socket._RetAddress
 
-
-PeerRaddr = dict[tuple[PacketType, str, int], CPeer]
 
 # 在线检测 内置版本
 class CheckAlive:
     
-    def __init__(self, serverhub=False):
+    def __init__(self, conf: dict, serverhub=False):
         """
         只在wg接口ip上监听
         """
+        # 当前配置
+        self.conf = conf
+        self.serverhub = serverhub
+
         self.se = selectors.DefaultSelector()
         self.socks = []
         self.sock4 = None
@@ -45,14 +52,9 @@ class CheckAlive:
         # 有个时候，socket还没初始化完？使用event解决？
         self.event_server_ping = funcs.get_event()
 
-        self.peers: dict[tuple[PacketType, str, int], PeerRaddr] = {}
-
-        self.serverhub = serverhub
+        self.peers: dict[PacketPeer, QueuePeer] = {}
 
 
-        # 当前配置
-        self.conf = None
-    
         # 需要更新域名的事件
         # self.update_peer_domain.set()
         self.cur_real_ip = ""
@@ -61,15 +63,11 @@ class CheckAlive:
         self._next_domain = 0
 
 
-    def ping(self, sock: socket.socket, cpeer: PeerRaddr):
+    def ping(self, sock: socket.socket, ppeer: PacketPeer):
         """
         peer 端被动检测
         """
-        peer = self.peers[cpeer]
-
-        raddr = (cpeer[1], cpeer[2])
-
-        q = peer.q
+        qp: QueuePeer = self.peers[ppeer]
 
         ping = Ping()
 
@@ -77,14 +75,14 @@ class CheckAlive:
 
         while True:
             
-            sock.sendto(ping.buf, raddr)
+            sock.sendto(ping.buf, ppeer.wg_check_ip_port)
             while True:
                 try:
-                    data = q.get(timeout=funcs.CHECK_TIMEOUT)
+                    data = qp.q.get(timeout=funcs.CHECK_TIMEOUT)
                 except queue.Empty:
                     # 超时
                     failed_count += 1
-                    logger.info(f"{raddr} 检测线路时丢包 {failed_count}/{funcs.CHECK_FAILED_COUNT}...")
+                    logger.info(f"{qp.peer_conf} 检测线路时丢包 {failed_count}/{funcs.CHECK_FAILED_COUNT}...")
                     break
 
                 
@@ -93,15 +91,15 @@ class CheckAlive:
 
                     if failed_count > 0:
                         failed_count = 0
-                        logger.info(f"--> {raddr} 检测恢复...")
+                        logger.info(f"--> {qp.peer_conf} 检测恢复...")
 
                     break
                 else:
                     logger.debug(f"可能收到了乱序包: {data}, 继续接收...")
 
             if failed_count >= funcs.CHECK_FAILED_COUNT:
-                logger.warning(f"--> {raddr} 线路断开了...")
-                self.update_domain(peer.conf)
+                logger.warning(f"--> {qp.peer_conf} 线路断开了...")
+                self.update_domain(qp.peer_conf)
                 failed_count = 0
 
             ping.next()
@@ -109,7 +107,7 @@ class CheckAlive:
             time.sleep(funcs.CHECK_TIMEOUT)
 
 
-    def server_ping(self, sock: socket.socket, cpeer: PeerRaddr):
+    def server_ping(self, sock: socket.socket, ppeer: PacketPeer):
         """
         peer 端被动检测
         """
@@ -117,9 +115,8 @@ class CheckAlive:
         self.event_server_ping.wait()
         logger.debug(f"server 初始化完成: {self.event_server_ping}")
 
-        peer = self.peers[cpeer]
-        raddr = (cpeer[1], cpeer[2])
-        logger.debug(f"添加 {raddr} check...")
+        qp: QueuePeer = self.peers[ppeer]
+        logger.debug(f"添加 {ppeer.wg_check_ip_port} check...")
 
 
         ping = Ping(PacketType.SERVER_PING)
@@ -128,14 +125,14 @@ class CheckAlive:
 
         while True:
             
-            sock.sendto(ping.buf, raddr)
+            sock.sendto(ping.buf, ppeer.wg_check_ip_port)
             while True:
                 try:
-                    data = peer.q.get(timeout=funcs.CHECK_TIMEOUT)
+                    data = qp.q.get(timeout=funcs.CHECK_TIMEOUT)
                 except queue.Empty:
                     # 超时
                     failed_count += 1
-                    logger.info(f"{raddr} 检测线路时丢包 {failed_count}/{funcs.CHECK_FAILED_COUNT}...")
+                    logger.info(f"{ppeer.wg_check_ip_port} 检测线路时丢包 {failed_count}/{funcs.CHECK_FAILED_COUNT}...")
                     break
 
                 
@@ -144,17 +141,17 @@ class CheckAlive:
 
                     if failed_count > 0:
                         failed_count = 0
-                        logger.info(f"{raddr} 检测恢复...")
+                        logger.info(f"{ppeer.wg_check_ip_port} 检测恢复...")
 
                     break
                 else:
                     logger.debug(f"可能收到了乱序包: {data}, 继续接收...")
 
             if failed_count >= funcs.CHECK_FAILED_COUNT:
-                logger.warning(f" --> {raddr} 线路断开了...")
+                logger.warning(f" --> {ppeer.wg_check_ip_port} 线路断开了...")
                 # logger.log(LEVEL_DEBUG2 ,f"{raddr} 退出")
-                logger.debug(f"{raddr} 退出")
-                self.peers.pop(cpeer)
+                logger.debug(f"{ppeer.wg_check_ip_port} 退出")
+                self.peers.pop(ppeer)
                 return
 
             ping.next()
@@ -175,16 +172,16 @@ class CheckAlive:
         sock6 = socket.socket(socket.AF_INET6, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
         sock6.setblocking(False)
         sock6.bind((wg_ipv6, funcs.CHECK_PORT))
+        self.se.register(sock6, selectors.EVENT_READ)
         self.socks.append(sock6)
         self.sock6 = sock6
 
         self.event_server_ping.set()
 
-        self.se.register(sock6, selectors.EVENT_READ)
 
         while True:
             for key, event in self.se.select():
-                sock: socket.socket = key.fileobj
+                sock: socket.socket = key.fileobj # type: ignore
                 data, addr = sock.recvfrom(8192)
 
                 # 要是指定类型的数据
@@ -194,47 +191,43 @@ class CheckAlive:
                     logger.debug(f"未知类型数据丢弃:{addr=} {data=}")
                     continue
 
-                peeraddr = (typ, addr[0], addr[1])
+                ppeer = PacketPeer(typ, addr)
 
                 if typ == PacketType.PING:
                     ping = Ping.reply(data)
                     sock.sendto(ping.buf, addr)
                     
                     # 添加 server ping 线程
-                    ping_peeraddr = (
-                        PacketType.SERVER_PING_REPLY,
-                        addr[0],
-                        addr[1],
-                        )
-                    peer = self.peers.get(ping_peeraddr)
+                    ppeer = PacketPeer(PacketType.SERVER_PING_REPLY, addr)
+                    peer = self.peers.get(ppeer)
                     if peer is None:
-                        self.peers[ping_peeraddr] = CPeer(queue.Queue(128))
-                        funcs.start_thread(target=self.server_ping, args=(sock, ping_peeraddr), name="server_ping check()", daemon=True)
+                        self.peers[ppeer] = QueuePeer(queue.Queue(128), {})
+                        funcs.start_thread(target=self.server_ping, args=(sock, ppeer), name="server_ping check()", daemon=True)
 
                 elif typ == PacketType.PING_REPLY:
-                    cpeer = self.peers.get(peeraddr)
+                    cpeer = self.peers.get(ppeer)
                     if cpeer is None:
-                        logger.debug(f"没有这个线程：{peeraddr=}")
+                        logger.debug(f"没有这个线程：{ppeer=}")
                     else:
                         try:
                             cpeer.q.put_nowait(data)
                         except queue.Full:
-                            logger.debug(f"{peeraddr} 接收队列已满, 丢弃 {data}")
+                            logger.debug(f"{ppeer} 接收队列已满, 丢弃 {data}")
 
                 elif typ == PacketType.SERVER_PING:
                     ping = Ping.reply(data)
                     sock.sendto(ping.buf, addr)
 
                 elif typ == PacketType.SERVER_PING_REPLY:
-                    cpeer = self.peers.get(peeraddr)
+                    cpeer = self.peers.get(ppeer)
 
                     if cpeer is None:
-                        logger.debug(f"没有这个线程：{peeraddr=}")
+                        logger.debug(f"没有这个线程：{ppeer=}")
                     else:
                         try:
                             cpeer.q.put_nowait(data)
                         except queue.Full:
-                            logger.debug(f"{peeraddr} 接收队列已满, 丢弃 {data}")
+                            logger.debug(f"{ppeer} 接收队列已满, 丢弃 {data}")
 
                 elif typ == PacketType.WP_PEER_INFO:
                     # serverhub.put((data, addr))

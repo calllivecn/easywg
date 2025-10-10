@@ -12,7 +12,8 @@ from log import logger
 
 from checkalive import (
     CheckAlive,
-    CPeer,
+    QueuePeer,
+    PacketPeer,
 )
 from packet import (
     PacketType,
@@ -57,8 +58,7 @@ def server(conf):
     util.wg_set(wg_name, ifname["private_key"], listen_port=ifname.get("listen_port"), fwmark=ifname.get("fwmark"))
     logger.debug(f"配置接口：{wg_name}")
 
-    checkalive = CheckAlive()
-    checkalive.conf = conf
+    checkalive = CheckAlive(conf)
     funcs.start_thread(target=checkalive.server, args=(self_ipv6, self_ipv4), name="CheckAlive.server()", daemon=True)
 
     for wg_conf in conf["peers"]:
@@ -107,21 +107,17 @@ def server(conf):
         if wg_check_ip:
             wg_check_port = info.get("wg_check_port", 19000)
 
-            cpeer = (
-                PacketType.PING_REPLY,
-                wg_check_ip,
-                wg_check_port,
-                )
+            packetpeer = PacketPeer(PacketType.PING_REPLY, (wg_check_ip, wg_check_port))
 
-            peer_value = CPeer(
+            peer_value = QueuePeer(
                 queue.Queue(128),
                 wg_conf["peer"],
             )
 
-            checkalive.peers[cpeer] = peer_value
+            checkalive.peers[packetpeer] = peer_value
 
             logger.debug(f"为 {wg_check_ip}:{wg_check_port} 启动 checkalive")
-            funcs.start_thread(target=checkalive.ping, args=(checkalive.sock6, cpeer), name=f"check_alive-{wg_check_ip}", daemon=True)
+            funcs.start_thread(target=checkalive.ping, args=(checkalive.sock6, packetpeer), name=f"check_alive-{wg_check_ip}", daemon=True)
 
 
     try:
