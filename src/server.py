@@ -38,9 +38,7 @@ def server(conf):
 
     exit_event = funcs.get_event()
 
-    # atexit.register(lambda :util.ip_link_del_wg(wg_name))
     signal.signal(signal.SIGTERM, lambda sig, frame: exit_event.set())
-
     
     self_ipv4 = None
     self_ipv6 = None

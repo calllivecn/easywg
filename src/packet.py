@@ -45,10 +45,10 @@ class Ping(struct.Struct):
         self.pack_into(self.buf, 0, self.typ, self.seq)
     
 
-    @staticmethod
-    def reply(packet: bytes) -> Self:
+    @classmethod
+    def reply(cls, packet: bytes) -> Self:
 
-        p = Ping()
+        p = cls()
 
         if packet[0] == PacketType.PING:
             p.typ = PacketType.PING_REPLY
@@ -61,10 +61,10 @@ class Ping(struct.Struct):
         return p
 
     
-    # @classmethod
-    @staticmethod
-    def server_reply(packet: bytes) -> Self:
-        p = Ping(PacketType.SERVER_PING_REPLY)
+    # @staticmethod
+    @classmethod
+    def server_reply(cls, packet: bytes) -> Self:
+        p = cls(PacketType.SERVER_PING_REPLY)
         typ, p.seq = p.unpack(packet[:p.size])
         return p
 
@@ -77,12 +77,15 @@ class Ping(struct.Struct):
         self.pack_into(self.buf, 0, self.typ, self.seq)
     
 
-    def __eq__(self, other: bytes|Self):
+    def __eq__(self, other: object) -> bool:
         if isinstance(other, bytes):
             return self.buf == other
 
         elif isinstance(other, Ping):
             return self.buf == other.buf
+
+        else:
+            return False
         
 
 if __name__ == "__main__":
