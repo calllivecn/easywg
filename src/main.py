@@ -94,7 +94,7 @@ def main():
         ifname = conf["ifname"]["interface"]
         fwmark = conf["ifname"].get("fwmark", 0x8123)
         table_id = conf["ifname"].get("table_id", fwmark)
-        # table_id = 198
+        # table_id == fwmark
 
         peer = conf["peers"][0]["peer"]
         logger.debug(f"VPN peer: {peer}")
@@ -116,9 +116,10 @@ def main():
             print("配置错误")
             sys.exit(1)
 
-        funcs.CHECK_PORT = conf.get("check_port", 19000)
-        funcs.CHECK_TIMEOUT = conf.get("check_timeout", 5)
-        funcs.CHECK_FAILED_COUNT = conf.get("check_failed_count", 6)
+        info = conf["info"]
+        info["check_port"] = info.get("check_port", funcs.CHECK_PORT)
+        info["check_timeout"] = info.get("check_timeout", funcs.CHECK_TIMEOUT)
+        info["check_failed_count"] = info.get("check_failed_count", funcs.CHECK_FAILED_COUNT)
 
         server(conf)
 

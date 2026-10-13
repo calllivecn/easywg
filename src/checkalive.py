@@ -9,7 +9,7 @@ import util
 from log import logger
 from packet import PacketType, Ping
 
-__all__ = ["CheckAlive", "CPeer", "PeerRaddr"]
+__all__ = ("CheckAlive", "CPeer", "PeerRaddr")
 
 
 @dataclass
@@ -182,8 +182,7 @@ class CheckAlive:
             peer = copy.deepcopy(peer_conf)
             peer["endpoint_addr"] = ip
             logger.info(f"更新peer端新地址: {previous} --> {ip}")
-            await funcs.run_sync(util.wg_peer_option,
-                                 self.conf["ifname"]["interface"], public_key, peer)
+            await funcs.run_sync(util.wg_peer_option, self.conf["ifname"]["interface"], public_key, peer)
             self.current_ips[public_key] = ip
 
     async def close(self):

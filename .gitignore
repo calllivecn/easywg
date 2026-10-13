@@ -1,26 +1,9 @@
-jquery-3.5.0.tar.gz
-layer-v3.1.1.zip
-layui-v2.5.6.zip
 __pycache__/
-axios-0.19.2.zip
-
-migrations/
-!migrations/__init__.py
-
-db.sqlite3
-
-.DS_Store
-node_modules/
-dist/
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-test/unit/coverage/
-
 build/
 dist/
-src/build/
-src/dist/
+
+db.sqlite3
+.DS_Store
 
 # Editor directories and files
 .idea
@@ -30,7 +13,6 @@ src/dist/
 *.njsproj
 *.sln
 
-backend/web_root/
 depend-cache/
 *.pyz
 *.json

@@ -82,11 +82,12 @@ async def _server(conf):
 
             wg_check_ip = info.get("wg_check_ip")
             if wg_check_ip:
-                wg_check_port = info.get("wg_check_port", 19000)
+                wg_check_port = info["wg_check_port"]
                 checkalive.add_peer(wg_check_ip, wg_check_port, wg_conf["peer"])
                 logger.debug(f"为 {wg_check_ip}:{wg_check_port} 添加异步 checkalive")
 
         await checkalive.server(self_ipv6, self_ipv4, exit_event)
+
     finally:
         try:
             await checkalive.close()
