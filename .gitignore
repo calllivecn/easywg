@@ -17,6 +17,8 @@ yarn-debug.log*
 yarn-error.log*
 test/unit/coverage/
 
+build/
+dist/
 src/build/
 src/dist/
 

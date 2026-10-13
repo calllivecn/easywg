@@ -1,278 +1,200 @@
-
-import time
+import asyncio
 import copy
-import queue
-import socket
 import ipaddress
-import selectors
+import socket
 from dataclasses import dataclass
 
+import funcs
 import util
 from log import logger
-from packet import (
-    PacketType,
-    Ping,
-)
-import funcs
+from packet import PacketType, Ping
 
-__all__ = [
-    "CheckAlive",
-    "QueuePeer",
-    "PacketPeer",
-]
+__all__ = ["CheckAlive", "CPeer", "PeerRaddr"]
 
-SocketAddress = tuple[str, int] | tuple[str, int, int, int]
 
 @dataclass
-class QueuePeer:
-    q: queue.Queue
-    peer_conf: dict
-
-@dataclass(frozen=True)
-class PacketPeer:
-    packettype: PacketType
-    wg_check_ip_port: tuple[str, int]
+class CPeer:
+    q: asyncio.Queue
+    conf: dict | None = None
 
 
-# 在线检测 内置版本
+PeerRaddr = dict[tuple[PacketType, str, int], CPeer]
+
+
 class CheckAlive:
-    
     def __init__(self, conf: dict, serverhub=False):
-        """
-        只在wg接口ip上监听
-        """
-        # 当前配置
         self.conf = conf
         self.serverhub = serverhub
-
-        self.se = selectors.DefaultSelector()
+        self.peers: PeerRaddr = {}
+        self.current_ips: dict[str, str] = {}
+        self.event_server_ping = asyncio.Event()
         self.socks = []
         self.sock4 = None
         self.sock6 = None
+        self._tasks: set[asyncio.Task] = set()
+        self._group = None
+        self._stop_event = None
 
-        # 有个时候，socket还没初始化完？使用event解决？
-        self.event_server_ping = funcs.get_event()
+    def add_peer(self, address: str, port: int, conf: dict):
+        # socket 返回压缩后的 IPv6 地址，配置中的地址也必须规范化。
+        address = str(ipaddress.ip_address(address))
+        key = (PacketType.PING_REPLY, address, port)
+        self.peers[key] = CPeer(asyncio.Queue(128), copy.deepcopy(conf))
 
-        self.peers: dict[PacketPeer, QueuePeer] = {}
+    def _start_task(self, coroutine):
+        task = self._group.create_task(coroutine)
+        self._tasks.add(task)
+        task.add_done_callback(self._tasks.discard)
+        return task
 
+    async def _wait_reply(self, q: asyncio.Queue, ping: Ping):
+        # 乱序包不结束当前探测，也不能不断重置超时。
+        async with asyncio.timeout(funcs.CHECK_TIMEOUT):
+            while True:
+                data = await q.get()
+                if Ping.reply(data).seq == ping.seq:
+                    return
+                logger.debug(f"可能收到了乱序包: {data}, 继续接收...")
 
-        # 需要更新域名的事件
-        # self.update_peer_domain.set()
-        self.cur_real_ip = ""
+    async def ping(self, sock: socket.socket, key):
+        await self._probe(sock, key, PacketType.PING)
 
-        # 多域名检测标志
-        self._next_domain = 0
+    async def server_ping(self, sock: socket.socket, key):
+        try:
+            await self._probe(sock, key, PacketType.SERVER_PING)
+        finally:
+            self.peers.pop(key, None)
 
-
-    def ping(self, sock: socket.socket, ppeer: PacketPeer):
-        """
-        peer端主动检测
-        """
-        qp: QueuePeer = self.peers[ppeer]
-
-        ping = Ping()
-
+    async def _probe(self, sock: socket.socket, key, typ: PacketType):
+        peer = self.peers[key]
+        address = (key[1], key[2])
+        ping = Ping(typ)
         failed_count = 0
+        loop = asyncio.get_running_loop()
 
         while True:
-            logger.debug(f"client ping: {ping.typ=} {ping.seq=}")
-            sock.sendto(ping.buf, ppeer.wg_check_ip_port)
-            while True:
-                try:
-                    data = qp.q.get(timeout=funcs.CHECK_TIMEOUT)
-                except queue.Empty:
-                    # 超时
-                    failed_count += 1
-                    logger.info(f"{ppeer.wg_check_ip_port} 检测线路时丢包 {failed_count}/{funcs.CHECK_FAILED_COUNT}...")
-                    break
-
-                
-                reply = ping.reply(data)
-                if ping.seq == reply.seq:
-
-                    if failed_count > 0:
-                        failed_count = 0
-                        logger.info(f"--> {ppeer.wg_check_ip_port} 检测恢复...")
-
-                    break
-                else:
-                    logger.debug(f"可能收到了乱序包: {data}, 继续接收...")
+            await loop.sock_sendto(sock, ping.buf, address)
+            try:
+                await self._wait_reply(peer.q, ping)
+            except TimeoutError:
+                failed_count += 1
+                logger.info(f"{address} 检测线路时丢包 {failed_count}/{funcs.CHECK_FAILED_COUNT}...")
+            else:
+                if failed_count:
+                    logger.info(f"--> {address} 检测恢复...")
+                failed_count = 0
 
             if failed_count >= funcs.CHECK_FAILED_COUNT:
-                logger.warning(f"--> {ppeer.wg_check_ip_port} 线路断开了...")
-                self.update_domain(qp.peer_conf)
+                logger.warning(f"--> {address} 线路断开了...")
+                if typ == PacketType.SERVER_PING:
+                    return
+                await self.update_domain(peer.conf)
                 failed_count = 0
 
             ping.next()
+            await asyncio.sleep(funcs.CHECK_TIMEOUT)
 
-            time.sleep(funcs.CHECK_TIMEOUT)
+    def _bind(self, family, address):
+        sock = socket.socket(family, socket.SOCK_DGRAM)
+        # 绑定失败时也由 finally 关闭已经创建的 socket。
+        self.socks.append(sock)
+        sock.setblocking(False)
+        if family == socket.AF_INET6:
+            sock.setsockopt(socket.IPPROTO_IPV6, socket.IPV6_V6ONLY, 1)
+        sock.bind((address, funcs.CHECK_PORT))
+        return sock
 
+    async def server(self, wg_ipv6, wg_ipv4=None, stop_event=None):
+        self._stop_event = stop_event if stop_event is not None else asyncio.Event()
+        try:
+            if wg_ipv4 is not None:
+                self.sock4 = self._bind(socket.AF_INET, wg_ipv4)
+            self.sock6 = self._bind(socket.AF_INET6, wg_ipv6)
 
-    def server_ping(self, sock: socket.socket, ppeer: PacketPeer):
-        """
-        peer 端被动检测
-        """
-        logger.debug(f"等待 server 初始化完成: {self.event_server_ping} ...")
-        self.event_server_ping.wait()
-        logger.debug(f"server 初始化完成: {self.event_server_ping}")
+            async with asyncio.TaskGroup() as group:
+                self._group = group
+                for sock in self.socks:
+                    self._start_task(self._handle_sock(sock))
+                for key, peer in list(self.peers.items()):
+                    if peer.conf is not None:
+                        sock = self.sock6 if ipaddress.ip_address(key[1]).version == 6 else self.sock4
+                        if sock is None:
+                            raise ValueError(f"没有可用于探测 {key[1]} 的 WireGuard 地址")
+                        self._start_task(self.ping(sock, key))
+                self.event_server_ping.set()
+                await self._stop_event.wait()
+                for task in list(self._tasks):
+                    task.cancel()
+        finally:
+            self._group = None
+            await self.close()
 
-        qp: QueuePeer = self.peers[ppeer]
-        logger.debug(f"添加 {ppeer.wg_check_ip_port} check...")
-
-
-        ping = Ping(PacketType.SERVER_PING)
-
-        failed_count = 0
-
+    async def _handle_sock(self, sock):
+        loop = asyncio.get_running_loop()
         while True:
-            
-            sock.sendto(ping.buf, ppeer.wg_check_ip_port)
-            while True:
-                try:
-                    data = qp.q.get(timeout=funcs.CHECK_TIMEOUT)
-                except queue.Empty:
-                    # 超时
-                    failed_count += 1
-                    logger.info(f"{ppeer.wg_check_ip_port} 检测线路时丢包 {failed_count}/{funcs.CHECK_FAILED_COUNT}...")
-                    break
+            data, addr = await loop.sock_recvfrom(sock, 8192)
+            if not data:
+                continue
+            try:
+                typ = PacketType(data[0])
+            except ValueError:
+                logger.debug(f"未知类型数据丢弃: {addr=} {data=}")
+                continue
 
-                
-                reply = ping.reply(data)
-                if ping.seq == reply.seq:
+            if typ not in (PacketType.PING, PacketType.PING_REPLY,
+                           PacketType.SERVER_PING, PacketType.SERVER_PING_REPLY):
+                continue
+            if len(data) < Ping().size:
+                logger.debug(f"不完整的心跳数据丢弃: {addr=} {data=}")
+                continue
 
-                    if failed_count > 0:
-                        failed_count = 0
-                        logger.info(f"{ppeer.wg_check_ip_port} 检测恢复...")
-
-                    break
-                else:
-                    logger.debug(f"可能收到了乱序包: {data}, 继续接收...")
-
-            if failed_count >= funcs.CHECK_FAILED_COUNT:
-                logger.warning(f" --> {ppeer.wg_check_ip_port} 线路断开了...")
-                # logger.log(LEVEL_DEBUG2 ,f"{raddr} 退出")
-                logger.debug(f"{ppeer.wg_check_ip_port} 退出")
-                self.peers.pop(ppeer)
-                return
-
-            ping.next()
-
-            time.sleep(funcs.CHECK_TIMEOUT)
-
-
-    def server(self, wg_ipv6, wg_ipv4=None):
-        if wg_ipv4 is not None:
-            sock4 = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
-            sock4.setblocking(False)
-            sock4.bind((wg_ipv4, funcs.CHECK_PORT))
-            self.se.register(sock4, selectors.EVENT_READ)
-            self.socks.append(sock4)
-            self.sock4 = sock4
-
-
-        sock6 = socket.socket(socket.AF_INET6, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
-        sock6.setblocking(False)
-        sock6.bind((wg_ipv6, funcs.CHECK_PORT))
-        self.se.register(sock6, selectors.EVENT_READ)
-        self.socks.append(sock6)
-        self.sock6 = sock6
-
-        self.event_server_ping.set()
-
-
-        while True:
-            for key, event in self.se.select():
-                sock: socket.socket = key.fileobj # type: ignore
-                data, addr = sock.recvfrom(8192)
-                logger.debug(f"收到地址: {addr=} {data[0]=}")
-
-                # 要是指定类型的数据
-                try:
-                    typ = PacketType(data[0])
-                except ValueError:
-                    logger.debug(f"未知类型数据丢弃:{addr=} {data=}")
-                    continue
-
+            if typ in (PacketType.PING, PacketType.SERVER_PING):
+                await loop.sock_sendto(sock, Ping.reply(data).buf, addr)
                 if typ == PacketType.PING:
-                    ping = Ping.reply(data)
-                    sock.sendto(ping.buf, addr)
-                    
-                    # 添加 server ping 线程
-                    ppeer = PacketPeer(PacketType.SERVER_PING, (addr[0], addr[1]))
-                    peer = self.peers.get(ppeer)
-                    if peer is None:
-                        self.peers[ppeer] = QueuePeer(queue.Queue(128), {})
-                        funcs.start_thread(target=self.server_ping, args=(sock, ppeer), name="server_ping check()", daemon=True)
-                        logger.debug(f"添加 server_ping 线程: {ppeer}")
+                    key = (PacketType.SERVER_PING_REPLY, addr[0], addr[1])
+                    if key not in self.peers:
+                        self.peers[key] = CPeer(asyncio.Queue(128))
+                        self._start_task(self.server_ping(sock, key))
+            else:
+                key = (typ, addr[0], addr[1])
+                peer = self.peers.get(key)
+                if peer is not None:
+                    try:
+                        peer.q.put_nowait(data)
+                    except asyncio.QueueFull:
+                        logger.debug(f"{key} 接收队列已满, 丢弃 {data}")
 
-                elif typ == PacketType.PING_REPLY:
-                    pp = PacketPeer(PacketType.PING, (addr[0], addr[1]))
-                    cpeer = self.peers.get(pp)
-                    if cpeer is None:
-                        logger.debug(f"没有这个线程：{pp=}")
-                    else:
-                        try:
-                            cpeer.q.put_nowait(data)
-                        except queue.Full:
-                            logger.debug(f"{pp} 接收队列已满, 丢弃 {data}")
-
-                elif typ == PacketType.SERVER_PING:
-                    ping = Ping.reply(data)
-                    sock.sendto(ping.buf, addr)
-
-                elif typ == PacketType.SERVER_PING_REPLY:
-                    pp = PacketPeer(PacketType.SERVER_PING, (addr[0], addr[1]))
-                    cpeer = self.peers.get(pp)
-
-                    if cpeer is None:
-                        logger.debug(f"没有这个线程：{pp=}")
-                    else:
-                        try:
-                            cpeer.q.put_nowait(data)
-                        except queue.Full:
-                            logger.debug(f"{pp} 接收队列已满, 丢弃 {data}")
-
-                elif typ == PacketType.WP_PEER_INFO:
-                    # serverhub.put((data, addr))
-                    pass
-                else:
-                    logger.debug(f"当前还未处理类型数据包，丢弃。{data=}")
-
-
-    def update_domain(self, peer_conf: dict):
-        """
-        如果是ip直接返回，是域名才解析。
-        """
+    async def update_domain(self, peer_conf: dict):
         endpoint = peer_conf["endpoint_addr"]
-
         try:
             ip = ipaddress.ip_address(endpoint).exploded
         except ValueError:
             logger.info(f"开始更新域名: {endpoint}")
-            ip = util.getaddrinfo(endpoint)
-        
-        # 如果没有解析到IP,给出提示
+            ip = await asyncio.to_thread(util.getaddrinfo, endpoint)
+
         if ip == []:
             logger.warning(f"{endpoint} 没有解析到IP.")
             return
 
-        if self.cur_real_ip != ip:
-
-            wg_name = self.conf["ifname"]["interface"]
-
+        public_key = peer_conf["public_key"]
+        previous = self.current_ips.get(public_key)
+        if previous != ip:
             peer = copy.deepcopy(peer_conf)
             peer["endpoint_addr"] = ip
+            logger.info(f"更新peer端新地址: {previous} --> {ip}")
+            await funcs.run_sync(util.wg_peer_option,
+                                 self.conf["ifname"]["interface"], public_key, peer)
+            self.current_ips[public_key] = ip
 
-            logger.info(f"更新peer端新地址: {self.cur_real_ip} --> {ip}")
-            util.wg_peer_option(wg_name, peer["public_key"], peer)
-
-            self.cur_real_ip = ip
-
-        else:
-            logger.debug(f"没有更新地址: {ip}")
-
-
-    def close(self):
+    async def close(self):
+        if self._stop_event is not None:
+            self._stop_event.set()
+        tasks = list(self._tasks)
+        for task in tasks:
+            task.cancel()
+        await asyncio.gather(*tasks, return_exceptions=True)
         for sock in self.socks:
-            self.se.unregister(sock)
             sock.close()
+        self.socks.clear()
+        self.sock4 = None
+        self.sock6 = None

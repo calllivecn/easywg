@@ -1,6 +1,7 @@
 
 
 import tomllib
+import asyncio
 import argparse
 import threading
 from pathlib import Path
@@ -37,3 +38,14 @@ def start_thread(*args, **kwargs):
 
 def get_event():
     return threading.Event()
+
+
+async def run_sync(func, *args, **kwargs):
+    # pyroute2 同步 API 自己运行事件循环，必须在工作线程内调用。
+    # 取消协程不会停止线程；等待操作完成，避免它与接口清理竞争。
+    task = asyncio.create_task(asyncio.to_thread(func, *args, **kwargs))
+    try:
+        return await asyncio.shield(task)
+    except asyncio.CancelledError:
+        await task
+        raise

@@ -97,7 +97,7 @@ def main():
         # table_id = 198
 
         peer = conf["peers"][0]["peer"]
-        logger.debug(f"VPN peer: {peer}") 
+        logger.debug(f"VPN peer: {peer}")
 
         if args.vpn_up:
             util.set_global_route_wg_pyroute2(ifname, table_id, fwmark)
