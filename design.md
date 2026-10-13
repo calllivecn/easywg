@@ -62,7 +62,7 @@ gw.pyz remove --pubkey <pubkey>
     wg.pyz --conf wg0.conf <peername> # 使用 wg-quick up wg0 的方式配置
     ```
 
-### 使用方式二（使用 wg.pyz 配置 Wireguard)
+### 使用方式二(使用 wg.pyz 配置 Wireguard)
 
 - 配置 wg.service:
 
@@ -70,7 +70,7 @@ gw.pyz remove --pubkey <pubkey>
     [Service]
     Type=Oneshot
     RemainAfterExit=yes
-    StartExec=/usr/local/sbin/wg.pyz --config /parh/to/user1-wg0.conf
+    StartExec=/usr/local/sbin/wgpy /parh/to/user1-wg0.conf
 
     [Install]
     WantedBy=multi-user.target
