@@ -19,9 +19,6 @@ from packet import (
     PacketType,
 )
 
-def serverhub_daemon(wg_ip):
-    pass
-
 
 def server(conf):
     # 配置wg
@@ -51,8 +48,7 @@ def server(conf):
         if ip.version == 4:
             if self_ipv4 is None:
                 self_ipv4 = ip.exploded
-        elif ip.version == 6:
-            if self_ipv6 is None:
+        elif ip.version == 6 and self_ipv6 is None:
                 self_ipv6 = ip.exploded
 
     util.wg_set(wg_name, ifname["private_key"], listen_port=ifname.get("listen_port"), fwmark=ifname.get("fwmark"))

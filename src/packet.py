@@ -12,9 +12,7 @@ import sys
 import enum
 import struct
 
-from typing import (
-    Self,
-)
+
 
 class PacketType(enum.IntEnum):
 
