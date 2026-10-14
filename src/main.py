@@ -65,6 +65,8 @@ def main():
             sys.exit(1)
         print(f"{nftables.__file__=}")
 
+        sys.exit(0)
+
 
     if args.genkey:
         privkey, pubkey = util.genkey()
@@ -102,7 +104,13 @@ def main():
             sys.exit(1)
 
         ifname = conf["ifname"]["interface"]
-        fwmark = conf["ifname"].get("fwmark", 0x8123)
+
+        try:
+            fwmark = conf["ifname"]["fwmark"]
+        except KeyError:
+            logger.error("client使用VPN模式需要, 配置fwmark。")
+            sys.exit(1)
+
         table_id = conf["ifname"].get("table_id", fwmark)
         # table_id == fwmark
 

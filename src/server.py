@@ -65,7 +65,12 @@ async def _server(conf):
                     addr = "127.0.0.1"
                 peer["endpoint_addr"] = addr[0]
 
-            logger.debug(f"配置 [{info["comment"]}] peer: {peer}")
+            tmp_peer = copy.deepcopy(peer)
+            try:
+                tmp_peer.pop("preshared_key")
+            except KeyError:
+                pass
+            logger.debug(f"配置 [{info["comment"]}] peer: {tmp_peer}")
             await funcs.run_sync(_set_peer, wg_name, peer)
 
             for cidr in peer.get("allowed_ips", []):
@@ -84,7 +89,7 @@ async def _server(conf):
             if wg_check_ip:
                 wg_check_port = info["wg_check_port"]
                 checkalive.add_peer(wg_check_ip, wg_check_port, wg_conf["peer"])
-                logger.debug(f"为 {info["comment"]} {wg_check_ip}:{wg_check_port} 添加异步 checkalive")
+                logger.debug(f"为 [{info["comment"]}] {wg_check_ip}:{wg_check_port} 添加异步 checkalive")
 
         await checkalive.server(self_ipv6, self_ipv4, exit_event)
 

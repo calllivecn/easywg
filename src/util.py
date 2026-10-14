@@ -220,14 +220,15 @@ def get_ip_by_addr(domainname):
 # server端只需要添加 allowed_ips 的其他路由就行。
 # 添加一个路由
 def add_route_ifname(net, ifname):
+    logger.debug(f"{ifname=} {net=}")
     with IPRoute() as ipr:
-        if len(ipr.route("dump", dst=net)) > 0:
+        if len(ipr.route("dump", dst=str(net))) > 0:
             # 如果路由已经存在，可能是因为之前添加过了。
             logger.debug(f"路由 {net} 已经存在，跳过添加。")
             return
 
         try:
-            ipr.route('add', dst=net, oif=ipr.link_lookup(ifname=ifname)[0])
+            ipr.route('add', dst=str(net), oif=ipr.link_lookup(ifname=ifname)[0])
         except Exception as e:
             logger.error(f"添加路由失败: {net} {ifname} Except: {e}")
             raise
@@ -405,7 +406,8 @@ def wg_peer(ifname, peer):
     if addr is not None:
         try:
             ip = ipaddress.ip_address(addr)
-        except ipaddress.AddressValueError:
+        # except ipaddress.AddressValueError:
+        except ValueError:
             # 说明是域名, 需要解析成IP才能给WG使用
             ipv4s, ipv6s = get_ip_by_addr(addr)
 

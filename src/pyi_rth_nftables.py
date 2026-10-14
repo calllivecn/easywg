@@ -19,4 +19,3 @@ if getattr(sys, 'frozen', False):
     if external_lib_dir not in sys.path:
         # sys.path.insert(0, str(external_lib_dir))
         sys.path.append(str(external_lib_dir))
- 
