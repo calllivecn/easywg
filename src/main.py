@@ -42,6 +42,7 @@ def main():
 
     parse.add_argument("--debug", action="store_true", help="debug 模式")
     parse.add_argument("--parse", action="store_true", help=argparse.SUPPRESS)
+    parse.add_argument("--check", action="store_true", help=argparse.SUPPRESS)
 
     parse.add_argument("conf", nargs="?", type=Path, help="wg 配置文件，toml文件。")
 
@@ -54,6 +55,15 @@ def main():
     
     if args.debug:
         logger.setLevel(DEBUG)
+
+    if args.check:
+        print(f"{sys.path=}")
+        try:
+            import nftables
+        except ModuleNotFoundError:
+            logger.warning("在系统当前没有检测到 nftables包。需要安装，(ubuntu: apt install python3-nftables)其他发行布问下AI.")
+            sys.exit(1)
+        print(f"{nftables.__file__=}")
 
 
     if args.genkey:

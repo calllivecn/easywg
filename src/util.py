@@ -5,6 +5,7 @@
 # author calllivecn <calllivecn@outlook.com>
 
 
+import sys
 import copy
 import socket
 import ipaddress
@@ -468,6 +469,12 @@ def wg_peer_option(ifname, peer_pubkey, opt_val: dict):
 class NftablesError(Exception):
     pass
 
+
+try:
+    from nftables import Nftables
+except ModuleNotFoundError:
+    logger.warning("在系统当前没有检测到 nftables 包。需要安装(ubuntu: apt install python3-nftables) 其他发行布问下AI.")
+    sys.exit(1)
 
 def nft(cmd):
     nft = Nftables()

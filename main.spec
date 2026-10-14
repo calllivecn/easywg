@@ -9,8 +9,8 @@ a = Analysis(
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},
-    runtime_hooks=[],
-    excludes=[],
+    runtime_hooks=['src/pyi_rth_nftables.py'],
+    excludes=['nftables'],   # ← 关键：排除外部库
     noarchive=False,
     optimize=0,
 )
