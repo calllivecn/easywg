@@ -37,7 +37,7 @@ def main():
     parse.add_argument("--show", action="store_true", help="查看当前wg接口")
     parse.add_argument("--show-private", action="store_true", help="查看当前wg接口")
 
-    parse.add_argument("--vpn-up", action="store_true", help="在当前指定的wireguard是启用client VPN 网络模式。")
+    parse.add_argument("--vpn-up", action="store_true", help="在当前指定的wireguard启用client VPN网络模式。")
     parse.add_argument("--vpn-down", action="store_true", help="关闭VPN模式。")
 
     parse.add_argument("--debug", action="store_true", help="debug 模式")

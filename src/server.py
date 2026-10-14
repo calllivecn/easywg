@@ -63,9 +63,9 @@ async def _server(conf):
                     logger.warning(f"没有查询到 {endpoint_addr} IP, 可能出错了。请检查")
                     # 暂时占位，之后由心跳任务重解析原始域名。
                     addr = "127.0.0.1"
-                peer["endpoint_addr"] = addr
+                peer["endpoint_addr"] = addr[0]
 
-            logger.debug(f"配置peer: {peer}")
+            logger.debug(f"配置 [{info["comment"]}] peer: {peer}")
             await funcs.run_sync(_set_peer, wg_name, peer)
 
             for cidr in peer.get("allowed_ips", []):
@@ -84,7 +84,7 @@ async def _server(conf):
             if wg_check_ip:
                 wg_check_port = info["wg_check_port"]
                 checkalive.add_peer(wg_check_ip, wg_check_port, wg_conf["peer"])
-                logger.debug(f"为 {wg_check_ip}:{wg_check_port} 添加异步 checkalive")
+                logger.debug(f"为 {info["comment"]} {wg_check_ip}:{wg_check_port} 添加异步 checkalive")
 
         await checkalive.server(self_ipv6, self_ipv4, exit_event)
 

@@ -27,7 +27,7 @@ from wggenkey import WireGuardKeyGenerator
 ##################
 
 # 查询dns -> ip
-def getaddrinfo(domainname):
+def getaddrinfo(domainname) -> list[str]:
     """
     只需要处理返回一个ip的情况
     return: [] or ["ip1"]
@@ -66,7 +66,7 @@ def getaddrinfo(domainname):
         logger.warning("查询到多个IP, 这个场景下不应该多个IP, 请删除多余的记录只保留一个。")
         return []
 
-    return ip[0]
+    return ip
 
 ##################
 # cryptography 方式生成密钥对

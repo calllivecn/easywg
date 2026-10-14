@@ -9,7 +9,7 @@ import util
 from log import logger
 from packet import PacketType, Ping
 
-__all__ = ("CheckAlive", "CPeer", "PeerRaddr")
+__all__ = ("CPeer", "CheckAlive", "PeerRaddr")
 
 
 @dataclass
@@ -32,7 +32,7 @@ class CheckAlive:
         self.sock4 = None
         self.sock6 = None
         self._tasks: set[asyncio.Task] = set()
-        self._group = None
+        self._group: asyncio.TaskGroup|None = None
         self._stop_event = None
 
     def add_peer(self, address: str, port: int, conf: dict):
@@ -42,6 +42,7 @@ class CheckAlive:
         self.peers[key] = CPeer(asyncio.Queue(128), copy.deepcopy(conf))
 
     def _start_task(self, coroutine):
+        assert self._group is not None
         task = self._group.create_task(coroutine)
         self._tasks.add(task)
         task.add_done_callback(self._tasks.discard)
@@ -164,20 +165,24 @@ class CheckAlive:
                     except asyncio.QueueFull:
                         logger.debug(f"{key} 接收队列已满, 丢弃 {data}")
 
+
     async def update_domain(self, peer_conf: dict):
         endpoint = peer_conf["endpoint_addr"]
         try:
-            ip = ipaddress.ip_address(endpoint).exploded
+            ips = ipaddress.ip_address(endpoint).exploded
         except ValueError:
             logger.info(f"开始更新域名: {endpoint}")
-            ip = await asyncio.to_thread(util.getaddrinfo, endpoint)
+            ips = await asyncio.to_thread(util.getaddrinfo, endpoint)
 
-        if ip == []:
+        if ips == []:
             logger.warning(f"{endpoint} 没有解析到IP.")
             return
 
         public_key = peer_conf["public_key"]
         previous = self.current_ips.get(public_key)
+
+        # 使用时只使用一个ip地址
+        ip = ips[0]
         if previous != ip:
             peer = copy.deepcopy(peer_conf)
             peer["endpoint_addr"] = ip
