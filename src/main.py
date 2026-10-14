@@ -57,13 +57,13 @@ def main():
         logger.setLevel(DEBUG)
 
     if args.check:
-        print(f"{sys.path=}")
+        # print(f"{sys.path=}")
         try:
             import nftables
+            print(f"检测到nftables包: {nftables.__file__=}")
         except ModuleNotFoundError:
             logger.warning("在系统当前没有检测到 nftables包。需要安装，(ubuntu: apt install python3-nftables)其他发行布问下AI.")
             sys.exit(1)
-        print(f"{nftables.__file__=}")
 
         sys.exit(0)
 
@@ -93,6 +93,13 @@ def main():
         wgshow.main(True)
     
     elif args.vpn_up or args.vpn_down:
+
+        try:
+            import nftables
+        except ModuleNotFoundError:
+            logger.warning("在系统当前没有检测到 nftables包。需要安装，(ubuntu: apt install python3-nftables)其他发行布问下AI.")
+            sys.exit(1)
+
         if args.conf is None:
             print("请指定配置文件")
             sys.exit(1)

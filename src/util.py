@@ -475,8 +475,7 @@ class NftablesError(Exception):
 try:
     from nftables import Nftables
 except ModuleNotFoundError:
-    logger.warning("在系统当前没有检测到 nftables 包。需要安装(ubuntu: apt install python3-nftables) 其他发行布问下AI.")
-    sys.exit(1)
+    pass
 
 def nft(cmd):
     nft = Nftables()
