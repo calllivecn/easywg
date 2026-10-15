@@ -5,8 +5,7 @@ After=network-online.target
 [Service]
 Type=simple
 ExecStart=/usr/local/sbin/wgpy /etc/wgs/%i.toml
-ExecStop=/usr/bin/bash -c "kill $MAINPID"
+# systemd 默认发送 SIGTERM，并等待进程完成接口清理后退出。
 
 [Install]
 WantedBy=multi-user.target
-

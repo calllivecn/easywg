@@ -24,7 +24,6 @@ async def _server(conf):
     exit_event = asyncio.Event()
     loop = asyncio.get_running_loop()
     previous_sigterm = signal.getsignal(signal.SIGTERM)
-    loop.add_signal_handler(signal.SIGTERM, exit_event.set)
     checkalive = CheckAlive(conf)
     interface_created = False
 
@@ -33,6 +32,7 @@ async def _server(conf):
         util.ip_link_add_wg(wg_name)
         interface_created = True
 
+    loop.add_signal_handler(signal.SIGTERM, exit_event.set)
     try:
         await funcs.run_sync(create_interface)
         wg_mtu = int(ifname.get("MTU"))
@@ -95,12 +95,15 @@ async def _server(conf):
 
     finally:
         try:
-            await checkalive.close()
+            try:
+                await checkalive.close()
+            finally:
+                if interface_created:
+                    await funcs.run_sync(util.ip_link_del_wg, wg_name)
+                    logger.debug(f"已删除接口：{wg_name}")
         finally:
+            # 清理完成前保留处理器，避免重复 SIGTERM 中断接口删除。
             loop.remove_signal_handler(signal.SIGTERM)
             signal.signal(signal.SIGTERM, previous_sigterm)
-            if interface_created:
-                await funcs.run_sync(util.ip_link_del_wg, wg_name)
-                logger.debug(f"已删除接口：{wg_name}")
 
     logger.debug("server 已结束")

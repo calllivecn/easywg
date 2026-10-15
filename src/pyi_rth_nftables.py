@@ -31,7 +31,7 @@ if getattr(sys, 'frozen', False):
 
 
     py_check = True
-
+    p = None
     if py_version and py is not None:
 
         try:
@@ -40,7 +40,7 @@ if getattr(sys, 'frozen', False):
             py_check = False
 
 
-        if py_check:
+        if py_check and p is not None:
 
             result = p.stdout.decode()
             external_lib_dir = Path(result).parent.parent

@@ -202,6 +202,61 @@ class CheckAliveTests(unittest.IsolatedAsyncioTestCase):
         delete.assert_called_once_with("wg-test")
         self.assertEqual(signal.getsignal(signal.SIGTERM), previous)
 
+    async def test_repeated_sigterm_during_interface_cleanup(self):
+        conf = {"ifname": {"interface": "wg-test", "MTU": 1280,
+                           "address": ["::1/128"], "private_key": "test"}, "peers": []}
+        started = threading.Event()
+        release = threading.Event()
+        finished = threading.Event()
+        unexpected_signals = []
+        previous = signal.getsignal(signal.SIGTERM)
+
+        def previous_handler(signum, frame):
+            unexpected_signals.append(signum)
+
+        def delete_interface(name):
+            started.set()
+            if not release.wait(2):
+                raise TimeoutError("interface cleanup was not released")
+            finished.set()
+
+        async def heartbeat(ipv6, ipv4, stop):
+            signal.raise_signal(signal.SIGTERM)
+            await asyncio.wait_for(stop.wait(), 1)
+
+        signal.signal(signal.SIGTERM, previous_handler)
+        try:
+            with patch.object(util, "ip_link_add_wg"), \
+                    patch.object(util, "ip_link_mtu"), \
+                    patch.object(util, "ip_addr_add"), \
+                    patch.object(util, "wg_set"), \
+                    patch.object(util, "ip_link_del_wg", side_effect=delete_interface) as delete, \
+                    patch.object(CheckAlive, "server", side_effect=heartbeat):
+                task = asyncio.create_task(_server(conf))
+                try:
+                    self.assertTrue(await asyncio.to_thread(started.wait, 1))
+                    signal.raise_signal(signal.SIGTERM)
+                    await asyncio.sleep(0.01)
+                    self.assertFalse(task.done())
+                    self.assertEqual(unexpected_signals, [])
+                finally:
+                    release.set()
+                    await asyncio.wait_for(task, 1)
+            delete.assert_called_once_with("wg-test")
+            self.assertTrue(finished.is_set())
+            self.assertIs(signal.getsignal(signal.SIGTERM), previous_handler)
+        finally:
+            signal.signal(signal.SIGTERM, previous)
+
+    async def test_cleanup_failure_restores_sigterm_handler(self):
+        conf = {"ifname": {"interface": "wg-test"}}
+        previous = signal.getsignal(signal.SIGTERM)
+        with patch.object(util, "ip_link_add_wg"), \
+                patch.object(util, "ip_link_del_wg", side_effect=RuntimeError("delete failed")):
+            with self.assertRaisesRegex(RuntimeError, "delete failed"):
+                await _server(conf)
+        self.assertEqual(signal.getsignal(signal.SIGTERM), previous)
+
     async def test_cancelled_sync_operation_finishes_before_cleanup(self):
         started = threading.Event()
         release = threading.Event()
