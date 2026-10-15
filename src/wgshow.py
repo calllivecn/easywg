@@ -1,180 +1,185 @@
 #!/usr/bin/env python3
 # coding=utf-8
-# date 2023-09-13 20:06:16
-# author calllivecn <calllivecn@outlook.com>
 
+import base64
+import os
+import sys
+import time
+import unicodedata
 
-import copy
-
-from datetime import (
-    datetime,
-    timedelta,
-)
-
-from pyroute2 import (
-    WireGuard,
-)
+from pyroute2 import WireGuard
 
 import util
-from log import logger
 
 
-__all__ = (
-    "WgShow",
-    )
+__all__ = ("WgShow",)
+
+RECENT_HANDSHAKE_SECONDS = 180
 
 
-def human_byte_size(size: int|float) -> str:
-    """
-    将字节数转换为人类可读的格式
-    """
-    for unit in ['B', 'KB', 'MB', 'GB', 'TB']:
-
-        if size < 1024:
-            return f"{size:.2f} {unit}"
-
+def human_byte_size(size: float) -> str:
+    for unit in ("B", "KiB", "MiB", "GiB", "TiB", "PiB"):
+        if size < 1024 or unit == "PiB":
+            return f"{size:.0f} B" if unit == "B" else f"{size:.2f} {unit}"
         size /= 1024
 
-    return f"{size:.2f}"
+    return ""
+
+
+def key_text(key) -> str:
+    if isinstance(key, bytes):
+        # pyroute2 通常返回 base64 字节串，也兼容原始 32 字节密钥。
+        return base64.b64encode(key).decode("ascii") if len(key) == 32 else key.decode("ascii")
+    return str(key or "")
+
+
+def has_preshared_key(key) -> bool:
+    if not key:
+        return False
+    if isinstance(key, bytes) and len(key) == 32:
+        return any(key)
+    try:
+        return any(base64.b64decode(key, validate=True))
+    except (ValueError, TypeError):
+        return True
+
+
+def short_key(key) -> str:
+    key = key_text(key)
+    return f"{key[:8]}…{key[-8:]}" if len(key) > 20 else key or "—"
+
+
+def endpoint_text(address, port) -> str:
+    if not address:
+        return "未设置"
+    if ":" in address and not address.startswith("["):
+        address = f"[{address}]"
+    return f"{address}:{port}" if port is not None else address
+
+
+def handshake_status(timestamp, now):
+    if not timestamp:
+        return "从未握手", "90", "—"
+    seconds = max(0, int(now - timestamp))
+    if seconds < 60:
+        age = f"{seconds} 秒前"
+    elif seconds < 3600:
+        age = f"{seconds // 60} 分 {seconds % 60} 秒前"
+    elif seconds < 86400:
+        age = f"{seconds // 3600} 小时 {seconds % 3600 // 60} 分前"
+    else:
+        age = f"{seconds // 86400} 天 {seconds % 86400 // 3600} 小时前"
+    if seconds <= RECENT_HANDSHAKE_SECONDS:
+        return "近期握手", "32", age
+    return "握手较旧", "33", age
 
 
 class WgShow:
-
     def show_wg(self, ifname, private=False) -> dict:
-        self._private = private
-
-        """
-        wg show:
-        {'attrs': [('WGDEVICE_A_LISTEN_PORT', 18000),
-               ('WGDEVICE_A_FWMARK', 0),
-               ('WGDEVICE_A_IFINDEX', 6),
-               ('WGDEVICE_A_IFNAME', 'wg-pyz'),
-               ('WGDEVICE_A_PRIVATE_KEY', b'000000000000000000000000000000'),
-               ('WGDEVICE_A_PUBLIC_KEY', b'000000000000000000000000000000'),
-               ('WGDEVICE_A_PEERS', [{'attrs': [('WGPEER_A_PUBLIC_KEY', b'000000000000000000000000000000'), ('WGPEER_A_PRESHARED_KEY', b'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA='), ('WGPEER_A_LAST_HANDSHAKE_TIME', {'tv_sec': 1694717024, 'tv_nsec': 765360652, 'latest handshake': 'Fri Sep 15 02:43:44 2023'}), ('WGPEER_A_PERSISTENT_KEEPALIVE_INTERVAL', 0), ('WGPEER_A_TX_BYTES', 167968360), ('WGPEER_A_RX_BYTES', 183858848), ('WGPEER_A_PROTOCOL_VERSION', 1), ('WGPEER_A_ENDPOINT', {'family': 10, 'port': 18000, 'flowinfo': 0, 'addr': '240e:3ba:30b1:4b40:e4d2:649f:e95b:bd39', 'scope_id': 0}), ('WGPEER_A_ALLOWEDIPS', [{'attrs': [('WGALLOWEDIP_A_CIDR_MASK', 24), ('WGALLOWEDIP_A_FAMILY', 2), ('WGALLOWEDIP_A_IPADDR', '0a:01:03:00')], 'addr': '10.1.3.0/24'}, {'attrs': [('WGALLOWEDIP_A_CIDR_MASK', 64), ('WGALLOWEDIP_A_FAMILY', 10), ('WGALLOWEDIP_A_IPADDR', 'fc:03:00:00:00:00:00:00:00:00:00:00:00:00:00:00')], 'addr': 'fc03::/64'}], 32768)]}], 32768)],
-        'cmd': 0,
-        'header': {'error': None,
-                   'flags': 2,
-                   'length': 372,
-                   'pid': 2728308,
-                   'sequence_number': 255,
-                   'stats': Stats(qsize=0, delta=0, delay=0),
-                   'target': 'localhost',
-                   'type': 35},
-        'reserved': 0,
-        'version': 1}
-
-        -----------------
-        wg_conf:[
-            {'address': ['10.x.x.x/24', 'fcxx::xx/64'],
-            'fwmark': 0,
-            'interface': 'wg-pyz',
-            'listen_port': 18000,
-            'peers': [{'allowed_ips': ['10.x.x.x/24', 'fcxx::xx/64'],
-                       'endpoint_addr': 'xxxx:xxxx/64',
-                       'endpoint_port': 18000,
-                       'public_key': b'00000000000000000000000000000000000000',
-                       'rx_bytes': 25328587220,
-                       'tx_bytes': 958578428,
-                       'wg_protocol_version': 1}],
-            'private_key': b'000000000000000000000000000000000000000000',
-            'public_key': b'000000000000000000000000000000000000'}
-        ]
-        """
-
+        # 保留旧调用签名，但展示数据中始终不保留真实私钥和预共享密钥。
         with WireGuard() as wg:
-            wg = wg.info(ifname)[0]
+            device = wg.info(ifname)[0]
 
-        wg_conf = {}
-        wg_conf["interface"] = wg.get_attr('WGDEVICE_A_IFNAME')
-        wg_conf["fwmark"] = wg.get_attr('WGDEVICE_A_FWMARK')
-        wg_conf["if_index"] = wg.get_attr('WGDEVICE_A_IFINDEX')
-        wg_conf["listen_port"] = wg.get_attr('WGDEVICE_A_LISTEN_PORT')
-        wg_conf["private_key"] = wg.get_attr('WGDEVICE_A_PRIVATE_KEY') if self._private else "**********"
-        wg_conf["public_key"] = wg.get_attr('WGDEVICE_A_PUBLIC_KEY')
-
-        addrs = []
-        for addr, prefixlen in util.ip_addr_ifname(ifname):
-            addrs.append("/".join([addr, str(prefixlen)]))
-
-        wg_conf["ip_address"] = addrs
-
-
-        peers = wg.get_attr("WGDEVICE_A_PEERS")
-        peers_conf = []
-        for peer in peers:
-            peer_conf = {}
-            peer_conf["wg_protocol_version"] = peer.get_attr('WGPEER_A_PROTOCOL_VERSION')
-            peer_conf["public_key"] = peer.get_attr('WGPEER_A_PUBLIC_KEY')
-            peer_conf["preshared_key"] = peer.get_attr('WGPEER_A_PRESHARED_KEY') if self._private else "**********"
-            peer_conf["persistent_keepalive"] = peer.get_attr('WGPEER_A_PERSISTENT_KEEPALIVE_INTERVAL')
-
-            endpoint = peer.get_attr('WGPEER_A_ENDPOINT')
-            if endpoint:
-                peer_conf["endpoint_addr"] = endpoint.get("addr")
-                peer_conf["endpoint_port"] = endpoint.get("port")
-
-            allowed_ips = peer.get_attr('WGPEER_A_ALLOWEDIPS')
-            allowed_ips_list = []
-            for allowed_ip in allowed_ips:
-                allowed_ips_list.append(allowed_ip.get('addr'))
-            
-            peer_conf["allowed_ips"] = allowed_ips_list
-
-            # 统计信息
-            peer_conf["tx_bytes"] = human_byte_size(peer.get_attr('WGPEER_A_TX_BYTES'))
-            peer_conf["rx_bytes"] = human_byte_size(peer.get_attr('WGPEER_A_RX_BYTES'))
-            
-            # 其他信息
-            tv_sec = peer.get_attr('WGPEER_A_LAST_HANDSHAKE_TIME')["tv_sec"]
-            if tv_sec == 0:
-                peer_conf["latest_handshake"] = "从未握手"
-            else:
-                now = datetime.now().timestamp()
-                latest = timedelta(seconds=round(now - tv_sec))
-                peer_conf["latest_handshake"] = f"{latest} 之前"
-
-            peers_conf.append(peer_conf)
-
-        wg_conf["peers"] = peers_conf
-
-        self.wg_conf = wg_conf
-        return self.wg_conf
+        conf = {
+            "interface": device.get_attr("WGDEVICE_A_IFNAME"),
+            "fwmark": device.get_attr("WGDEVICE_A_FWMARK") or 0,
+            "listen_port": device.get_attr("WGDEVICE_A_LISTEN_PORT"),
+            "private_key": "****",
+            "public_key": key_text(device.get_attr("WGDEVICE_A_PUBLIC_KEY")),
+            "ip_address": [f"{addr}/{prefix}" for addr, prefix in util.ip_addr_ifname(ifname)],
+            "peers": [],
+        }
+        for peer in device.get_attr("WGDEVICE_A_PEERS") or []:
+            endpoint = peer.get_attr("WGPEER_A_ENDPOINT") or {}
+            handshake = peer.get_attr("WGPEER_A_LAST_HANDSHAKE_TIME") or {}
+            item = {
+                "public_key": key_text(peer.get_attr("WGPEER_A_PUBLIC_KEY")),
+                "persistent_keepalive": peer.get_attr("WGPEER_A_PERSISTENT_KEEPALIVE_INTERVAL") or 0,
+                "endpoint_addr": endpoint.get("addr"),
+                "endpoint_port": endpoint.get("port"),
+                "allowed_ips": [ip.get("addr") for ip in peer.get_attr("WGPEER_A_ALLOWEDIPS") or []],
+                "tx_bytes": peer.get_attr("WGPEER_A_TX_BYTES") or 0,
+                "rx_bytes": peer.get_attr("WGPEER_A_RX_BYTES") or 0,
+                "latest_handshake": handshake.get("tv_sec", 0),
+            }
+            if has_preshared_key(peer.get_attr("WGPEER_A_PRESHARED_KEY")):
+                item["preshared_key"] = "***"
+            conf["peers"].append(item)
+        self.wg_conf = conf
+        return conf
 
 
-    def get_wg_conf(self):
-        """
-        返回可转发的配置信息
-        """
-        confs = copy.deepcopy(self.wg_conf)
+def render_interface(device, conf=None, *, color=False, now=None) -> str:
+    now = time.time() if now is None else now
 
-        data = []
-        for conf in confs:
-            conf.pop("private_key")
-            conf.pop("")
+    def paint(text, code):
+        return f"\033[{code}m{text}\033[0m" if color else str(text)
 
-    
-    def wg_conf_transport(self):
+    def clean(text):
+        # 备注等配置文本按单行展示，避免控制字符破坏卡片布局。
+        return "".join(c if not unicodedata.category(c).startswith("C") else " " for c in str(text))
 
-        self.get_wg_conf
+    def field(label, value, indent=2):
+        width = sum(2 if unicodedata.east_asian_width(c) in "WF" else 1 for c in label)
+        return " " * indent + paint(label, "90") + " " * max(2, 14 - width) + str(value)
+
+    configured = {}
+    if conf and conf.get("ifname", {}).get("interface") == device["interface"]:
+        configured = {key_text(p["peer"]["public_key"]): p for p in conf.get("peers", [])}
+
+    peers = device.get("peers", [])
+    states = [handshake_status(p.get("latest_handshake"), now) for p in peers]
+    counts = {name: sum(s[0] == name for s in states) for name in ("近期握手", "握手较旧", "从未握手")}
+    rule = paint("─" * 66, "90")
+    lines = [paint(f"WireGuard · {device['interface']}", "1;36"), rule,
+             field("地址", " · ".join(device.get("ip_address", [])) or "—"),
+             field("监听", f"UDP {device.get('listen_port', 0)}"),
+             field("公钥", short_key(device.get("public_key"))),
+             field("PRIVATE_KEY", "****"),
+             field("FwMark", hex(device.get("fwmark", 0))), "",
+             f"  节点 {len(peers)}    " + " · ".join(f"{name} {count}" for name, count in counts.items()), rule]
+
+    for peer, (status, status_color, age) in zip(peers, states):
+        source = configured.get(key_text(peer.get("public_key")), {})
+        peer_conf = source.get("peer", {})
+        comment = source.get("info", {}).get("comment")
+        name = clean(comment).strip() if comment else ""
+        name = name or "未知"
+        lines.extend(["", f"  {paint('●', status_color)} {paint(name, '1')}    {paint(status, status_color)}"])
+        current_endpoint = endpoint_text(peer.get("endpoint_addr"), peer.get("endpoint_port"))
+        configured_endpoint = endpoint_text(peer_conf.get("endpoint_addr"), peer_conf.get("endpoint_port"))
+        lines.append(field("Endpoint", clean(configured_endpoint if peer_conf.get("endpoint_addr") else current_endpoint), 4))
+        if peer_conf.get("endpoint_addr") and configured_endpoint != current_endpoint:
+            lines.append(field("当前地址", current_endpoint, 4))
+        lines.extend([
+            field("隧道网段", " · ".join(peer.get("allowed_ips", [])) or "—", 4),
+            field("最近握手", paint(age, status_color), 4),
+            field("流量", paint(f"↓ {human_byte_size(peer.get('rx_bytes', 0))}", "36") + "    "
+                  + paint(f"↑ {human_byte_size(peer.get('tx_bytes', 0))}", "35"), 4),
+            field("Keepalive", f"{peer['persistent_keepalive']} 秒" if peer.get("persistent_keepalive") else "关闭", 4),
+            field("PUBLIC_KEY", key_text(peer.get("public_key")) or "—", 4),
+        ])
+        if "preshared_key" in peer or "preshared_key" in peer_conf:
+            lines.append(field("PRESHARED_KEY", "***", 4))
+    if not peers:
+        lines.extend(["", "  暂无 peer"])
+    lines.extend(["", paint("  状态依据最近握手时间（3 分钟内为近期），不代表实时心跳结果。", "90")])
+    return "\n".join(lines)
 
 
-
-def main(bool_=False):
-    import pprint
-
-    list_wg_list = util.list_wg_all()
-    logger.debug(f"""{"="*20}""")
-    logger.debug(f"{type(list_wg_list)=} {list_wg_list=}")
-
-
+def main(bool_=False, conf=None):
+    # --show-private 兼容旧参数，所有展示入口统一遮蔽密钥。
+    interfaces = [conf["ifname"]["interface"]] if conf is not None else util.list_wg_all()
+    if not interfaces:
+        print("未发现 WireGuard 接口")
+        return
+    color = sys.stdout.isatty() and "NO_COLOR" not in os.environ and os.environ.get("TERM") != "dumb"
     ws = WgShow()
-    for wg in list_wg_list:
-        wg_conf = ws.show_wg(wg, bool_)
-        print(f"""{"="*10} {wg} {"="*10}""")
-        print(pprint.pformat(wg_conf))
-    
+    for index, name in enumerate(interfaces):
+        if index:
+            print()
+        print(render_interface(ws.show_wg(name), conf, color=color))
+
 
 if __name__ == "__main__":
     main()
-

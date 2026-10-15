@@ -12,6 +12,24 @@
     ```
 
 
+### 查看接口状态
+
+```shell
+# 查看所有 WireGuard 接口
+uv run --locked python src/main.py --show
+
+# 查看指定配置对应的接口，并按 peer 公钥匹配 peers.info.comment 备注
+uv run --locked python src/main.py --show /etc/wgs/home.toml
+```
+
+使用卡片格式显示接口、节点备注、Endpoint、最近握手、累计收发流量及 Keepalive。
+仅在显式指定配置文件时读取备注，不自动查找配置文件。
+节点标题显示匹配公钥的 `peers.info.comment`，未指定配置或没有备注则显示“未知”；完整 `PUBLIC_KEY` 放在节点详情内。
+终端自动启用颜色，重定向输出时不带颜色；设置 `NO_COLOR` 也可关闭颜色。
+握手状态分为“近期握手”（3 分钟内）、“握手较旧”和“从未握手”，并非实时心跳状态。
+`PRIVATE_KEY` 始终显示为 `****`；已配置预共享密钥的 peer 显示 `PRESHARED_KEY ***`。
+旧 `--show-private` 选项保留为兼容别名，也不会显示真实密钥。
+
 ### 工作方式说明
 
 

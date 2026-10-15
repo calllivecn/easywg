@@ -34,8 +34,8 @@ def main():
     parse.add_argument("--pubkey", metavar="<private_key>", action="store", help="从指定私钥生成公钥")
     parse.add_argument("--genpsk", action="store_true", help="生成预共享密钥")
 
-    parse.add_argument("--show", action="store_true", help="查看当前wg接口")
-    parse.add_argument("--show-private", action="store_true", help="查看当前wg接口")
+    parse.add_argument("--show", action="store_true", help="卡片式查看wg接口，可提供配置文件显示节点备注；密钥已遮蔽")
+    parse.add_argument("--show-private", action="store_true", help="兼容选项，同 --show，密钥仍遮蔽")
 
     parse.add_argument("--vpn-up", action="store_true", help="在当前指定的wireguard启用client VPN网络模式。")
     parse.add_argument("--vpn-down", action="store_true", help="关闭VPN模式。")
@@ -84,13 +84,16 @@ def main():
         psk = util.genpsk()
         print(f"预共享密钥: {psk}")
     
-    elif args.show:
+    elif args.show or args.show_private:
         import wgshow
-        wgshow.main()
-
-    elif args.show_private:
-        import wgshow
-        wgshow.main(True)
+        conf = None
+        if args.conf is not None:
+            try:
+                conf = loadconf(args.conf)
+            except (OSError, ValueError):
+                print("配置错误")
+                sys.exit(1)
+        wgshow.main(conf=conf)
     
     elif args.vpn_up or args.vpn_down:
 
@@ -148,5 +151,5 @@ def main():
 
         server(conf)
 
-if __name__ == "__main__":            
-    main() 
+if __name__ == "__main__":
+    main()
