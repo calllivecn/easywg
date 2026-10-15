@@ -62,7 +62,7 @@ async def _server(conf):
                 if len(addr) == 0:
                     logger.warning(f"没有查询到 {endpoint_addr} IP, 可能出错了。请检查")
                     # 暂时占位，之后由心跳任务重解析原始域名。
-                    addr = "127.0.0.1"
+                    addr = ["127.0.0.1"]
                 peer["endpoint_addr"] = addr[0]
 
             tmp_peer = copy.deepcopy(peer)
